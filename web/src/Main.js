@@ -20,7 +20,7 @@ import {times} from 'lodash'
 const defaultGridSize = window.innerWidth < 750 ? 'large' : 'medium'
 export default function Main() {
 
-
+  const [gridSize, setGridSize] = useState('xs')
 
 
 
@@ -75,10 +75,21 @@ export default function Main() {
       </header>
 
 
+      <section className="center">
 
+          <div>
+            <label>GRID SIZE</label>
+            <select defaultValue={'xs'} onChange={e => setGridSize(e.target.value)}>
+              <option value="xs">Extra Small</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
 
+      </section>
 
-      <section className={`thumbnailGrid ${gridSizeClasses.medium}`}>
+      <section className={`thumbnailGrid ${gridSizeClasses[gridSize]}`}>
         {sortedData.map((d, i) => <div key={`thumbnail-${i}`}><Thumbnail data={d} key={d.tokenId} /></div>) }
       </section>
 
