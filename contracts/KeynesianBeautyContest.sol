@@ -4,16 +4,20 @@ import "./Dependencies.sol";
 
 pragma solidity ^0.8.11;
 
+interface ITokenURI {
+  function tokenURI(uint256 tokenId) external view returns (string memory);
+}
 
 contract KeynesianBeautyContest is ERC721, Ownable {
-  using Strings for uint8;
+  using Strings for uint256;
 
   bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
   address public mintingAddress;
-  uint8 constant public maxTokenCount = 100;
+  uint256 constant public maxTokenCount = 100;
 
-  bool public useURIPointer;
+  bool public useURIProxy;
+  ITokenURI public externalTokenURIContract;
 
   string public baseUrl;
   string public metadataExtension;
@@ -27,11 +31,11 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   uint16 public royaltyBasisPoints = 1000;
 
   mapping(address => bool) public operatorDenials;
-  mapping (uint8 => string) public tokenIdToName;
-  mapping (uint8 => string) public tokenIdToDescription;
+  mapping (uint256 => string) public tokenIdToName;
+  mapping (uint256 => string) public tokenIdToDescription;
 
   event ProjectEvent(address indexed poster, string indexed eventType, string content);
-  event TokenEvent(address indexed poster, uint8 indexed tokenId, string indexed eventType, string content);
+  event TokenEvent(address indexed poster, uint256 indexed tokenId, string indexed eventType, string content);
 
   constructor() ERC721('KeynesianBeautyContest', 'KBC') {
     mintingAddress = msg.sender;
@@ -43,11 +47,11 @@ contract KeynesianBeautyContest is ERC721, Ownable {
     _;
   }
 
-  function totalSupply() external pure returns (uint8) {
+  function totalSupply() external pure returns (uint256) {
     return maxTokenCount;
   }
 
-  function mint(address to, uint8 tokenId) external onlyMinter {
+  function mint(address to, uint256 tokenId) external onlyMinter {
     require(tokenId < maxTokenCount, 'Invalid tokenId');
     _mint(to, tokenId);
   }
@@ -57,14 +61,14 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   }
 
 
-  function tokenURI(uint8 tokenId) public view returns (string memory) {
+  function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
     require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
-    string memory tokenString = tokenId.toString();
-
-    if (useURIPointer) {
-      return string(abi.encodePacked(baseUrl, tokenString, metadataExtension));
+    if (useURIProxy) {
+      return externalTokenURIContract.tokenURI(tokenId);
     }
+
+    string memory tokenString = tokenId.toString();
 
     string memory json = Base64.encode(
       bytes(
@@ -82,8 +86,9 @@ contract KeynesianBeautyContest is ERC721, Ownable {
     return string(abi.encodePacked('data:application/json;base64,', json));
   }
 
-  function flipUseURIPointer() external onlyOwner {
-    useURIPointer = !useURIPointer;
+  function setUseURIPointer(bool _useURIProxy, address _externalTokenURIAddress) external onlyOwner {
+    useURIProxy = _useURIProxy;
+    externalTokenURIContract = ITokenURI(_externalTokenURIAddress);
   }
 
   function updateBaseUrl(string calldata _baseUrl, string calldata _metadataExtension) external onlyOwner {
@@ -106,7 +111,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
 
 
   function setTokenMetadata(
-    uint8 tokenId,
+    uint256 tokenId,
     string calldata name,
     string calldata description
   ) external onlyOwner {
@@ -115,7 +120,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   }
 
   function batchSetTokenMetadata(
-    uint8[] calldata tokenIds,
+    uint256[] calldata tokenIds,
     string[] calldata names,
     string[] calldata descriptions
   ) external onlyOwner {
@@ -123,7 +128,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
     require(tokenIds.length == names.length);
 
     for (uint i = 0; i < tokenIds.length; i++) {
-      uint8 tokenId = tokenIds[i];
+      uint256 tokenId = tokenIds[i];
       tokenIdToName[tokenId] = names[i];
       tokenIdToDescription[tokenId] = descriptions[i];
     }
@@ -134,7 +139,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
     emit ProjectEvent(_msgSender(), _eventType, _content);
   }
 
-  function emitTokenEvent(uint8 tokenId, string calldata _eventType, string calldata _content) external {
+  function emitTokenEvent(uint256 tokenId, string calldata _eventType, string calldata _content) external {
     require(
       owner() == _msgSender() || ERC721.ownerOf(tokenId) == _msgSender(),
       'Only project or token owner can emit token event'

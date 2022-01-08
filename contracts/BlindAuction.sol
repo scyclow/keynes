@@ -1,116 +1,138 @@
-// // SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 
-// pragma solidity ^0.8.11;
-
-
-// // 1 days of bidding
-
-// // 1 days to reveal
-
-// // after reveal period
-//   // all unsealed bids lose collateral
-//   // if winning bid does not have enough collateral, they lose it
+pragma solidity ^0.8.11;
 
 
 
+interface IKeynesianBeautyContest {
+  function mint(address to, uint256 tokenId) external;
+}
 
 
+contract BlindAuction {
+  struct SealedBid {
+    address bidder;
+    uint256 stake;
+    bool    active;
+  }
+
+  struct UnsealedBid {
+    address bidder;
+    uint256 amount;
+    bool    claimed;
+  }
+
+  enum AuctionPhase {
+    PAUSED,
+    BIDDING,
+    REVEAL,
+    CLAIM
+  }
+
+  mapping(bytes32 => SealedBid) public hashToSealedBids;
+  mapping(uint256 => UnsealedBid) public tokenIdToHighestUnsealedBid;
 
 
+  bool private locked;
+  uint256 public minimumCollateral = 0.2 ether;
+  IKeynesianBeautyContest public immutable kbcContract;
+  AuctionPhase public auctionPhase = AuctionPhase.PAUSED;
 
-// // 2 days to bid/remove bid
+  constructor(address _kbcContractAddr) {
+    kbcContract = IKeynesianBeautyContest(_kbcContractAddr);
+  }
 
-
-
-// contract BlindAuction {
-
-//   struct Bid {
-//     bidder: address;
-//     sealedBid: string;
-//     unsealedBid: uint256;
-//     stakedCollateral: uint256;
-//     stakedBalance: uint256;
-//   }
-
-
-//   uint256 public bidCount;
-//   mapping(uint256 => Bid) public bidList;
-//   mapping(address => Bid[]) public bidderToBids;
+  modifier nonReentrant() {
+    require(!locked, "No re-entrancy");
+    locked = true;
+    _;
+    locked = false;
+  }
 
 
-//   mapping(uint245 => uint256) public tokenIdToHighestUnsealedBidAmount;
-//   mapping(uint245 => uint256) public tokenIdToHighestUnsealedBidId;
+  function hashBid(uint256 tokenId, uint256 amount, address bidder) public pure returns (bytes32) {
+    return keccak256(abi.encodePacked(tokenId, amount, bidder));
+  }
 
-//   enum AuctionPhase { BIDDING, REVEAL, WITHDRAW };
+  function placeSealedBid(bytes32 bidHash) public payable nonReentrant {
+    require(msg.value >= minimumCollateral, "Collateral not high enough");
+    _createNewSealedBid(bidHash, msg.value, msg.sender);
+  }
 
-//   AuctionPhase auctionPhase;
+  function withdrawSealedBid(bytes32 bidHash) external {
 
+    require(auctionPhase == AuctionPhase.PAUSED || auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn in the PAUSED of BIDDING phase");
+    SealedBid memory sealedBid = hashToSealedBids[bidHash];
+    require(msg.sender == sealedBid.bidder, "Bid can only be withdrawn by the bidder");
+    require(sealedBid.active == true, "Bid must be active for collateral to be unstaked");
 
-//   constructor() {
-//     auctionPhase = AuctionPhase.BIDDING;
-//   }
+    _markSealedBidInnactive(bidHash);
+    payable(msg.sender).transfer(sealedBid.stake);
+  }
 
-//   function hashBid(uint256 amount, string memory secret, uint256 tokenId) pure view {
-//     return keccak256(abi.encodePacked(bidAmount, secret, tokenId)));
-//   }
+  function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash) external {
+    SealedBid memory oldBid = hashToSealedBids[oldBidHash];
+    require(auctionPhase == AuctionPhase.PAUSED || auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn in the PAUSED of BIDDING phase");
+    require(msg.sender == oldBid.bidder, "Bid can only be withdrawn by the bidder");
 
+    uint256 stake = hashToSealedBids[oldBidHash].stake;
+    _markSealedBidInnactive(oldBidHash);
+    _createNewSealedBid(newBidHash, stake, msg.sender);
+  }
 
-//   function makeSealedBid(uint256 tokenId, string sealedBid) public payable {
-//     require(auctionPhase == AuctionPhase.BIDDING, "Sealed bid can only be made int he bidding phase");
-//     require(msg.value >= 0.25 ether, "Collateral must be greater than or equal to 0.25 ETH");
-//     uint256 bidId = tokenIdToBidCount[tokenId];
-//     Bid storage bid = tokenIdToBids[tokenId][bidId];
+  function _markSealedBidInnactive(bytes32 bidHash) private {
+    hashToSealedBids[bidHash].stake = 0;
+    hashToSealedBids[bidHash].active = false;
+  }
 
-//     bid.tokenId = tokenId;
-//     bid.bidder = msg.sender;
-//     bid.stakedCollateral = msg.value;
-//     bid.stakedBalance = msg.value;
-//     bid.sealedBid = sealedBid;
+  function _createNewSealedBid(bytes32 bidHash, uint256 stake, address bidder) private {
+    hashToSealedBids[bidHash].bidder = bidder;
+    hashToSealedBids[bidHash].stake = stake;
+    hashToSealedBids[bidHash].active = true;
+  }
 
-//     tokenIdToBidCount[tokenId]++;
-//   }
+  function unsealBid(uint256 tokenId, uint256 amount) external payable nonReentrant {
+    require(auctionPhase == AuctionPhase.REVEAL, "Bids can only be unsealed in the REVEAL phase");
 
-//   function updateSealedBid(uint256 tokenId, uint256 bidId, string memory newSealedBid) public payable {
-//     require(auctionPhase == AuctionPhase.BIDDING, "Sealed bid can only be made int he bidding phase");
-//     Bid storage bid = tokenIdToBids[tokenId][bidId];
-//     require(bid.bidder == msg.sender, "only bidder can update bid");
+    bytes32 bidHash = hashBid(tokenId, amount, msg.sender);
+    SealedBid memory sealedBid = hashToSealedBids[bidHash];
+    require(sealedBid.stake > 0, "Stake must be positive to unseal");
+    require(sealedBid.active == true, "Bid must be active to be unsealed");
+    _markSealedBidInnactive(bidHash);
 
-//     bid.stakedCollateral += msg.value;
-//     bid.stakedBalance += msg.value;
-//     bid.sealedBid = newSealedBid;
-//   }
+    UnsealedBid storage highestUnsealedBid = tokenIdToHighestUnsealedBid[tokenId];
 
-//   function revealBid(uint256 tokenId, uint256 bidId, uint256 amount, string memory secret) public payable {
-//     require(auctionPhase == AuctionPhase.REVEAL, "Bids can only be revealed in the reveal phase");
+    if (amount > highestUnsealedBid.amount && tokenId < 100) {
+      // if sender is the highest bider for the token and the token is valid...
+      // refund the current highest bidder
+      payable(highestUnsealedBid.bidder).transfer(highestUnsealedBid.amount);
 
-//     Bid storage bid = tokenIdToBids[tokenId][bidId];
-//     require(hashBid(amount, secret, tokenId) == bid.sealedBid, "Revealed bid must match bid hash");
+      // update highest bidder
+      highestUnsealedBid.amount = amount;
+      highestUnsealedBid.bidder = msg.sender;
 
-//     bid.unsealedBid = amount;
+      // update stake amount
+      if (amount > sealedBid.stake) {
+        // If bidder's existing stake isn't high enough to support bid, require more eth
+        require(msg.value >= amount - sealedBid.stake, "Updated stake not enough to support bid");
+      } else if (amount < sealedBid.stake) {
+        // If bidder's existing stake is higher than bid, return
+        payable(msg.sender).transfer(sealedBid.stake - amount);
+      }
 
-//     uint amountLeft = amount - bid.stakedCollateral;
-//     if (amountLeft < 0) {
-//       // send some change back
-//     } else if (amountLeft > 0) {
-//       // make sure msg.value >= amountLeft
-//       // update value and return any change
-//     } else {
-//       // don't need to do anything. return any change
-//     }
+    } else {
+      // otherwise, refund
+      payable(msg.sender).transfer(sealedBid.stake + msg.value);
+    }
+  }
 
-//     if (tokenIdToHighestUnsealedBidAmount[tokenId] < amount) {
-//       tokenIdToHighestUnsealedBidAmount[tokenId] = amount;
-//       tokenIdToHighestUnsealedBidId[tokenId] = bidId;
-//     }
+  function claimToken(uint256 tokenId) external {
+    require(auctionPhase == AuctionPhase.CLAIM, "Tokens can only be claimed in the CLAIM phase");
+    UnsealedBid storage unsealedBid = tokenIdToHighestUnsealedBid[tokenId];
+    require(unsealedBid.bidder == msg.sender, "Token can only be claimed by highest bidder for token");
+    require(!unsealedBid.claimed, "Token has already been claimed");
+    unsealedBid.claimed = true;
 
-
-//   }
-
-//   function withdrawCollateral(uint256 tokenId, uint256 bidId) public {
-//     require(auctionPhase == AuctionPhase.REVEAL, "Bids can only be revealed in the reveal phase");
-//     require(tokenIdToHighestUnsealedBidId[tokenId] != bidId, "Cannot withdraw the highest bid for token");
-//     Bid storage bid = tokenIdToBids[tokenId][bidId];
-//   }
-
-
-// }
+    kbcContract.mint(unsealedBid.bidder, tokenId);
+  }
+}
