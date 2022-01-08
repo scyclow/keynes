@@ -107,10 +107,12 @@ export default function Main() {
 function Thumbnail({ data }) {
 
   return (
-    <Link to={`/packets/${data.tokenId}`} style={{ textAlign: 'center' }}>
+    <Link to={`/packets/${data.tokenId}`}>
       <div className={`Thumbnail`}>
-        <img src={`./assets/${data.tokenId}.jpeg`} loading="lazy" />
-        <div className="thumbnailClickPrompt thumbnailClickPromptView">{'View >'}</div>
+        <div>
+          <img src={`./assets/${data.tokenId}.jpeg`} loading="lazy" />
+        </div>
+        {data.tokenId}
       </div>
     </Link>
   )

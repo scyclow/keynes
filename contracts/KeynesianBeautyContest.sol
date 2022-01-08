@@ -5,13 +5,13 @@ import "./Dependencies.sol";
 pragma solidity ^0.8.11;
 
 
-contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
-  using Strings for uint256;
+contract KeynesianBeautyContest is ERC721, Ownable {
+  using Strings for uint8;
 
   bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-  uint private _tokenIdCounter;
   address public mintingAddress;
+  uint8 constant public maxTokenCount = 100;
 
   bool public useURIPointer;
 
@@ -20,57 +20,44 @@ contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
 
   string public baseImgUrl;
   string public baseExternalUrl;
-  string public license;
-  string public imgExtension;
+  string public license = 'CC BY-NC 4.0';
+  string public imgExtension = '.jpeg';
 
   address public royaltyBenificiary;
-  uint public royaltyBasisPoints;
+  uint16 public royaltyBasisPoints = 1000;
 
   mapping(address => bool) public operatorDenials;
-  mapping (uint256 => string) public tokenIdToName;
-  mapping (uint256 => string) public tokenIdToAttributtes;
-  mapping (uint256 => string) public tokenIdToDescription;
+  mapping (uint8 => string) public tokenIdToName;
+  mapping (uint8 => string) public tokenIdToDescription;
 
   event ProjectEvent(address indexed poster, string indexed eventType, string content);
-  event TokenEvent(address indexed poster, uint256 indexed tokenId, string indexed eventType, string content);
+  event TokenEvent(address indexed poster, uint8 indexed tokenId, string indexed eventType, string content);
 
   constructor() ERC721('KeynesianBeautyContest', 'KBC') {
-    baseUrl = '';
-    baseImgUrl = '';
-    baseExternalUrl = '';
-    projectDescription = '';
-
-    license = 'CC BY-NC 4.0';
-    imgExtension = '.png';
-    metadataExtension = '';
-    useURIPointer = false;
-
     mintingAddress = msg.sender;
     royaltyBenificiary = msg.sender;
-    royaltyBasisPoints = 750;
-
-    _tokenIdCounter = 0;
   }
 
-  function totalSupply() public view virtual returns (uint256) {
-    return _tokenIdCounter;
-  }
-
-  function mint(address to, string memory name, string memory attributes, string memory description) public {
+  modifier onlyMinter() {
     require(mintingAddress == _msgSender(), 'Caller is not the minting address');
-    _mint(to, _tokenIdCounter);
-    tokenIdToName[_tokenIdCounter] = name;
-    tokenIdToAttributes[_tokenIdCounter] = attributes;
-    tokenIdToDescription[_tokenIdCounter] = description;
-    _tokenIdCounter++;
+    _;
   }
 
-  function setMintingAddress(address minter) public onlyOwner {
+  function totalSupply() external pure returns (uint8) {
+    return maxTokenCount;
+  }
+
+  function mint(address to, uint8 tokenId) external onlyMinter {
+    require(tokenId < maxTokenCount, 'Invalid tokenId');
+    _mint(to, tokenId);
+  }
+
+  function setMintingAddress(address minter) external onlyOwner {
     mintingAddress = minter;
   }
 
 
-  function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+  function tokenURI(uint8 tokenId) public view returns (string memory) {
     require(_exists(tokenId), 'ERC721Metadata: URI query for nonexistent token');
 
     string memory tokenString = tokenId.toString();
@@ -81,39 +68,36 @@ contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
 
     string memory json = Base64.encode(
       bytes(
-        string(
-          abi.encodePacked(
-            '{"name": "', tokenIdToName[tokenId],
-            '", "description": "', tokenIdToDescription[tokenId],
-            '", "license": "', license,
-            '", "image": "', baseImgUrl, tokenString, imgExtension,
-            '", "external_url": "', baseExternalUrl, tokenString,
-            '", "tokenId": "', tokenString,
-            '", "attributes": "', tokenIdToAttributes[tokenId],
-            '"}'
-          )
+        abi.encodePacked(
+          '{"name": "', tokenIdToName[tokenId],
+          '", "description": "', tokenIdToDescription[tokenId],
+          '", "license": "', license,
+          '", "image": "', baseImgUrl, tokenString, imgExtension,
+          '", "external_url": "', baseExternalUrl, tokenString,
+          '", "tokenId": "', tokenString,
+          '"}'
         )
       )
     );
     return string(abi.encodePacked('data:application/json;base64,', json));
   }
 
-  function flipUseURIPointer() public onlyOwner {
+  function flipUseURIPointer() external onlyOwner {
     useURIPointer = !useURIPointer;
   }
 
-  function updateBaseUrl(string memory _baseUrl, string memory _metadataExtension) public onlyOwner {
+  function updateBaseUrl(string calldata _baseUrl, string calldata _metadataExtension) external onlyOwner {
     baseUrl = _baseUrl;
     metadataExtension = _metadataExtension;
   }
 
 
-  function updateMetadataParams(
-    string memory _baseImgUrl,
-    string memory _imgExtension,
-    string memory _baseExternalUrl,
-    string memory _license
-  ) public onlyOwner {
+  function setBaseMetadata(
+    string calldata _baseImgUrl,
+    string calldata _imgExtension,
+    string calldata _baseExternalUrl,
+    string calldata _license
+  ) external onlyOwner {
     baseImgUrl = _baseImgUrl;
     imgExtension = _imgExtension;
     baseExternalUrl = _baseExternalUrl;
@@ -121,24 +105,36 @@ contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
   }
 
 
-  function updateTokenName(uint256 tokenId, string memory _name) public onlyOwner {
-    tokenIdToName[tokenId] = _name;
+  function setTokenMetadata(
+    uint8 tokenId,
+    string calldata name,
+    string calldata description
+  ) external onlyOwner {
+    tokenIdToName[tokenId] = name;
+    tokenIdToDescription[tokenId] = description;
   }
 
-  function updateTokenDescription(uint256 tokenId, string memory _description) public onlyOwner {
-    tokenIdToDescription[tokenId] = _description;
+  function batchSetTokenMetadata(
+    uint8[] calldata tokenIds,
+    string[] calldata names,
+    string[] calldata descriptions
+  ) external onlyOwner {
+    require(tokenIds.length == descriptions.length);
+    require(tokenIds.length == names.length);
+
+    for (uint i = 0; i < tokenIds.length; i++) {
+      uint8 tokenId = tokenIds[i];
+      tokenIdToName[tokenId] = names[i];
+      tokenIdToDescription[tokenId] = descriptions[i];
+    }
   }
 
-  function updateTokenAttributes(uint256 tokenId, string memory _attributes) public onlyOwner {
-    tokenIdToAttributes[tokenId] = _attributes;
-  }
 
-
-  function emitProjectEvent(string memory _eventType, string memory _content) public onlyOwner {
+  function emitProjectEvent(string calldata _eventType, string calldata _content) external onlyOwner {
     emit ProjectEvent(_msgSender(), _eventType, _content);
   }
 
-  function emitTokenEvent(uint256 tokenId, string memory _eventType, string memory _content) public {
+  function emitTokenEvent(uint8 tokenId, string calldata _eventType, string calldata _content) external {
     require(
       owner() == _msgSender() || ERC721.ownerOf(tokenId) == _msgSender(),
       'Only project or token owner can emit token event'
@@ -148,8 +144,8 @@ contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
 
   function updatRoyaltyInfo(
     address _royaltyBenificiary,
-    uint _royaltyBasisPoints
-  ) public onlyOwner {
+    uint16 _royaltyBasisPoints
+  ) external onlyOwner {
     royaltyBenificiary = _royaltyBenificiary;
     royaltyBasisPoints = _royaltyBasisPoints;
   }
@@ -157,20 +153,6 @@ contract KeynesianBeautyContest is ERC721, ERC721Burnable, Ownable {
   function royaltyInfo(uint256, uint256 _salePrice) external view returns (address, uint256) {
     return (royaltyBenificiary, _salePrice * royaltyBasisPoints / 10000);
   }
-
-  function setOperatorDenial(address operator, bool denied) public onlyOwner {
-    operatorDenials[operator] = denied;
-  }
-
-  function _beforeTokenTransfer(
-    address from,
-    address to,
-    uint256 tokenId
-  ) internal virtual override(ERC721) {
-    super._beforeTokenTransfer(from, to, tokenId);
-    require(!_exists(tokenId) || ERC721.ownerOf(tokenId) == _msgSender() ||  !operatorDenials[_msgSender()], "Operator denied");
-  }
-
 
   /**
    * @dev See {IERC165-supportsInterface}.

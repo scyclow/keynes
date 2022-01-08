@@ -1,13 +1,16 @@
 
 require("@nomiclabs/hardhat-waffle")
 require("hardhat-gas-reporter");
+require("@nomiclabs/hardhat-web3");
+
 
 const STUFF = require('../DEV_KEYS/stuff.json')
 
 module.exports = {
   solidity: {
     compilers: [
-      {version: "0.8.2"},
+      {version: "0.8.0"},
+      {version: "0.8.11"},
     ]
   },
   networks: {
