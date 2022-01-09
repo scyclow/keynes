@@ -312,3 +312,384 @@ describe('KeynesianBeautyContest Base', () => {
   })
 })
 
+describe.only('BlindAuction', () => {
+  const stakeValue = ethers.utils.parseEther('0.2')
+  const highBidValue = ethers.utils.parseEther('0.5')
+  const lowBidValue = ethers.utils.parseEther('0.1')
+  const payableEth = { value: stakeValue }
+  const zeroAddress = '0x0000000000000000000000000000000000000000'
+
+  let owner, bidder1, bidder2, KBC, BlindAuction
+  beforeEach(async () => {
+    const signers = await ethers.getSigners()
+    owner = signers[2]
+    bidder1 = signers[3]
+    bidder2 = signers[4]
+
+    const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
+    KBC = await KBCFactory.deploy()
+
+    await KBC.deployed()
+
+    const BlindAuctionFactory = await ethers.getContractFactory('BlindAuction', owner)
+    BlindAuction = await BlindAuctionFactory.deploy(KBC.address)
+
+    await BlindAuction.deployed()
+
+    await KBC.connect(owner).mint(owner.address, 0)
+    await KBC.connect(owner).mint(owner.address, 1)
+    await KBC.connect(owner).mint(owner.address, 2)
+    await BlindAuction.connect(owner).changeAuctionStateBidding()
+  })
+
+  describe('placeSealedBid', () => {
+    it('should work', async () => {
+      const startingBidderBalance = num(await bidder1.getBalance())
+
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+      const endingBidderBalance = num(await bidder1.getBalance())
+      const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
+
+      expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0.2, 0.01)
+      expect(sealedBid.bidder).to.equal(bidder1.address)
+      expect(sealedBid.stake).to.equal(stakeValue)
+      expect(sealedBid.active).to.equal(true)
+    })
+
+    it('should not work if collateral is too low', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).placeSealedBid(bidHash, {
+          value: ethers.utils.parseEther('0.19')
+        }, 'Collateral not high enough')
+      )
+    })
+
+    it('should not work if hash already exists', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth),
+        'Hash for sealed bid already exists'
+      )
+
+      await expectFailure(() =>
+        BlindAuction.connect(bidder2).placeSealedBid(bidHash, payableEth),
+        'Hash for sealed bid already exists'
+      )
+    })
+
+    it('should only work in the bidding phase', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+
+      await BlindAuction.connect(owner).changeAuctionStatePaused()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth),
+        'Bid can only be created in the BIDDING phase'
+      )
+
+      await BlindAuction.connect(owner).changeAuctionStateReveal()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth),
+        'Bid can only be created in the BIDDING phase'
+      )
+
+      await BlindAuction.connect(owner).changeAuctionStateClaim()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth),
+        'Bid can only be created in the BIDDING phase'
+      )
+    })
+  })
+
+  describe('withdrawSealedBid', () => {
+    it('should work', async () => {
+      const startingBidderBalance = num(await bidder1.getBalance())
+
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+      await BlindAuction.connect(bidder1).withdrawSealedBid(bidHash)
+
+
+      const endingBidderBalance = num(await bidder1.getBalance())
+
+      const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
+
+      expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01)
+      expect(sealedBid.bidder).to.equal(zeroAddress)
+      expect(sealedBid.stake).to.equal(0)
+      expect(sealedBid.active).to.equal(false)
+    })
+
+    it('should not work for wrong bidder', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+      await expectFailure(() =>
+        BlindAuction.connect(bidder2).withdrawSealedBid(bidHash),
+        'Bid can only be withdrawn by the bidder'
+      )
+    })
+
+
+    it('should not work on an already withdrawn bid', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+      await BlindAuction.connect(bidder1).withdrawSealedBid(bidHash)
+
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
+        'Bid is already marked innactive'
+      )
+
+      await expectFailure(() =>
+        BlindAuction.connect(bidder2).withdrawSealedBid(bidHash),
+        'Bid is already marked innactive'
+      )
+    })
+
+    it('should only work in the BIDDING phase', async () => {
+      const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+      await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+      await BlindAuction.connect(owner).changeAuctionStatePaused()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
+        'Bid can only be withdrawn or updated in the BIDDING phase'
+      )
+
+      await BlindAuction.connect(owner).changeAuctionStateReveal()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
+        'Bid can only be withdrawn or updated in the BIDDING phase'
+      )
+
+      await BlindAuction.connect(owner).changeAuctionStateClaim()
+      await expectFailure(() =>
+        BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
+        'Bid can only be withdrawn or updated in the BIDDING phase'
+      )
+    })
+
+    // TODO
+    it('should not allow reentry', async () => {})
+  })
+
+  describe('updateSealedBid', () => {
+    it('should work', async () => {
+      // old bid is marked innactive
+      // new bid exists and is correct
+      // eth is not returned
+    })
+    it('oldBid should not work for wrong bidder')
+    it('oldBid cannot be innactive')
+    it('newBid hash cannot already exist')
+    it('should only work in the BIDDING phase')
+  })
+
+  describe('unsealBid', () => {
+    describe('no current bids', () => {
+      it('should reveal the bid', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+        await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue)
+
+        const endingBidderBalance = num(await bidder1.getBalance())
+        const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
+
+        expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0.1, 0.01) // stake refund (0.2), less the bid (0.1)
+        expect(sealedBid.bidder).to.equal(zeroAddress)
+        expect(sealedBid.stake).to.equal(0)
+        expect(sealedBid.active).to.equal(false)
+
+        const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(0)
+        expect(highestUnsealedBid.bidder).to.equal(bidder1.address)
+        expect(highestUnsealedBid.amount).to.equal(lowBidValue)
+        expect(highestUnsealedBid.claimed).to.equal(false)
+      })
+
+      it('should refund if tokenId is invalid', async () => {
+        const invalidTokenId = 100
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(invalidTokenId, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+        await BlindAuction.connect(bidder1).unsealBid(invalidTokenId, lowBidValue)
+
+        const endingBidderBalance = num(await bidder1.getBalance())
+        const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
+
+        expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // stake refund (0.2), less the bid (0.1)
+        expect(sealedBid.bidder).to.equal(zeroAddress)
+        expect(sealedBid.stake).to.equal(0)
+        expect(sealedBid.active).to.equal(false)
+
+        const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(invalidTokenId)
+        expect(highestUnsealedBid.bidder).to.equal(zeroAddress)
+        expect(highestUnsealedBid.amount).to.equal(0)
+        expect(highestUnsealedBid.claimed).to.equal(false)
+      })
+
+      it('should not work on inactive bids', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+        await BlindAuction.connect(bidder1).withdrawSealedBid(bidHash)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, lowBidValue),
+          'Bid must be active to be unsealed'
+        )
+      })
+
+      it('should not work on already unsealed bids', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+
+        await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue)
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, lowBidValue),
+          'Bid must be active to be unsealed'
+        )
+      })
+
+      it('should not work if amount is incorrect', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, ethers.utils.parseEther('0.001')),
+          'Bid must be active to be unsealed'
+        )
+
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, ethers.utils.parseEther('10')),
+          'Bid must be active to be unsealed'
+        )
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, -1),
+          ''
+        )
+      })
+
+      it('should not work if tokenId is incorrect', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(1, lowBidValue),
+          'Bid must be active to be unsealed'
+        )
+      })
+
+      it('should only work in the reveal phase', async () => {
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStatePaused()
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, lowBidValue),
+          'Bids can only be unsealed in the REVEAL phase'
+        )
+
+        await BlindAuction.connect(owner).changeAuctionStateBidding()
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, lowBidValue),
+          'Bids can only be unsealed in the REVEAL phase'
+        )
+
+        await BlindAuction.connect(owner).changeAuctionStateClaim()
+        await expectFailure(() =>
+          BlindAuction.connect(bidder1).unsealBid(0, lowBidValue),
+          'Bids can only be unsealed in the REVEAL phase'
+        )
+      })
+    })
+
+    describe('existing higher bidder', () => {
+      it('should refund bidder their full stake', async () => {
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        const bidHash2 = await BlindAuction.connect(bidder2).hashBid(0, highBidValue, bidder2.address)
+
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash1, payableEth)
+        await BlindAuction.connect(bidder2).placeSealedBid(bidHash2, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionStateReveal()
+        await BlindAuction.connect(bidder2).unsealBid(0, highBidValue, { value: ethers.utils.parseEther('0.3') })
+        await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue)
+
+        const endingBidderBalance = num(await bidder1.getBalance())
+
+        const sealedBid1 = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash1)
+        expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // full stake refund (0.2)
+        expect(sealedBid1.bidder).to.equal(zeroAddress)
+        expect(sealedBid1.stake).to.equal(0)
+        expect(sealedBid1.active).to.equal(false)
+
+        const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(0)
+        expect(highestUnsealedBid.bidder).to.equal(bidder2.address)
+        expect(highestUnsealedBid.amount).to.equal(highBidValue)
+        expect(highestUnsealedBid.claimed).to.equal(false)
+      })
+    })
+
+    describe('overtaking the highest bidder', () => {
+      it('should partially refund the bidder if they bid less than the collateral', async () => {})
+
+      it('should require more money to unseal if bid is higher than collateral', async () => {})
+    })
+
+
+
+
+
+    // TODO
+    it('should not allow reentry', async () => {})
+  })
+  describe('claimToken', () => {
+    it('should mint the token', async () => {
+      // token balance updates appropriately
+      // eth held by contract.
+    })
+    it('should only work in the CLAIM phase')
+    it('cannot be claimed twice')
+    it('can only be claimed by the tokens highest bidder')
+  })
+
+  describe('withdrawSalesRevenue', () => {
+    it('should withdraw eth')
+    it('should only work in the claim phase')
+  })
+  describe('changeAuctionState', () => {})
+})

@@ -3,9 +3,9 @@
 pragma solidity ^0.8.11;
 
 
-
 interface IKeynesianBeautyContest {
   function mint(address to, uint256 tokenId) external;
+  function owner() external view returns (address);
 }
 
 
@@ -49,43 +49,49 @@ contract BlindAuction {
     locked = false;
   }
 
+  modifier onlyOwner() {
+    require(msg.sender == kbcContract.owner(), "Ownable: caller is not the owner");
+    _;
+  }
+
 
   function hashBid(uint256 tokenId, uint256 amount, address bidder) public pure returns (bytes32) {
+    require(amount > 0, "Bid amount must be positive");
     return keccak256(abi.encodePacked(tokenId, amount, bidder));
   }
 
-  function placeSealedBid(bytes32 bidHash) public payable nonReentrant {
+  function placeSealedBid(bytes32 bidHash) public payable {
     require(msg.value >= minimumCollateral, "Collateral not high enough");
+    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be created in the BIDDING phase");
+
     _createNewSealedBid(bidHash, msg.value, msg.sender);
   }
 
-  function withdrawSealedBid(bytes32 bidHash) external {
+  function withdrawSealedBid(bytes32 bidHash) external nonReentrant {
+    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
-    require(auctionPhase == AuctionPhase.PAUSED || auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn in the PAUSED of BIDDING phase");
-    SealedBid memory sealedBid = hashToSealedBids[bidHash];
-    require(msg.sender == sealedBid.bidder, "Bid can only be withdrawn by the bidder");
-    require(sealedBid.active == true, "Bid must be active for collateral to be unstaked");
-
+    uint256 stake = hashToSealedBids[bidHash].stake;
     _markSealedBidInnactive(bidHash);
-    payable(msg.sender).transfer(sealedBid.stake);
+    payable(msg.sender).transfer(stake);
   }
 
   function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash) external {
-    SealedBid memory oldBid = hashToSealedBids[oldBidHash];
-    require(auctionPhase == AuctionPhase.PAUSED || auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn in the PAUSED of BIDDING phase");
-    require(msg.sender == oldBid.bidder, "Bid can only be withdrawn by the bidder");
+    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
-    uint256 stake = hashToSealedBids[oldBidHash].stake;
     _markSealedBidInnactive(oldBidHash);
-    _createNewSealedBid(newBidHash, stake, msg.sender);
+    _createNewSealedBid(newBidHash, hashToSealedBids[oldBidHash].stake, msg.sender);
   }
 
   function _markSealedBidInnactive(bytes32 bidHash) private {
-    hashToSealedBids[bidHash].stake = 0;
-    hashToSealedBids[bidHash].active = false;
+    require(hashToSealedBids[bidHash].active == true, "Bid is already marked innactive");
+    require(msg.sender == hashToSealedBids[bidHash].bidder, "Bid can only be withdrawn by the bidder");
+
+    delete hashToSealedBids[bidHash];
   }
 
   function _createNewSealedBid(bytes32 bidHash, uint256 stake, address bidder) private {
+    require(hashToSealedBids[bidHash].bidder == address(0), 'Hash for sealed bid already exists');
+
     hashToSealedBids[bidHash].bidder = bidder;
     hashToSealedBids[bidHash].stake = stake;
     hashToSealedBids[bidHash].active = true;
@@ -96,8 +102,9 @@ contract BlindAuction {
 
     bytes32 bidHash = hashBid(tokenId, amount, msg.sender);
     SealedBid memory sealedBid = hashToSealedBids[bidHash];
-    require(sealedBid.stake > 0, "Stake must be positive to unseal");
+
     require(sealedBid.active == true, "Bid must be active to be unsealed");
+    require(sealedBid.stake > 0, "Stake must be positive to unseal");
     _markSealedBidInnactive(bidHash);
 
     UnsealedBid storage highestUnsealedBid = tokenIdToHighestUnsealedBid[tokenId];
@@ -135,4 +142,14 @@ contract BlindAuction {
 
     kbcContract.mint(unsealedBid.bidder, tokenId);
   }
+
+  function withdrawSalesRevenue() external onlyOwner {
+    require(auctionPhase == AuctionPhase.CLAIM, "Funds can only be withdrawn in the CLAIM phase");
+    payable(msg.sender).transfer(address(this).balance);
+  }
+
+  function changeAuctionStateBidding() external onlyOwner { auctionPhase = AuctionPhase.BIDDING; }
+  function changeAuctionStatePaused() external onlyOwner { auctionPhase = AuctionPhase.PAUSED; }
+  function changeAuctionStateReveal() external onlyOwner { auctionPhase = AuctionPhase.REVEAL; }
+  function changeAuctionStateClaim() external onlyOwner { auctionPhase = AuctionPhase.CLAIM; }
 }
