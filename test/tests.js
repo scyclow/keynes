@@ -356,7 +356,6 @@ describe.only('BlindAuction', () => {
       expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0.2, 0.01)
       expect(sealedBid.bidder).to.equal(bidder1.address)
       expect(sealedBid.stake).to.equal(stakeValue)
-      expect(sealedBid.active).to.equal(true)
     })
 
     it('should not work if collateral is too low', async () => {
@@ -425,7 +424,6 @@ describe.only('BlindAuction', () => {
       expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01)
       expect(sealedBid.bidder).to.equal(zeroAddress)
       expect(sealedBid.stake).to.equal(0)
-      expect(sealedBid.active).to.equal(false)
     })
 
     it('should not work for wrong bidder', async () => {
@@ -485,6 +483,15 @@ describe.only('BlindAuction', () => {
 
   describe('updateSealedBid', () => {
     it('should work', async () => {
+
+      const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+      const newBidHash = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
+
+      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
+      await BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash)
+
+
+      // TODO
       // old bid is marked innactive
       // new bid exists and is correct
       // eth is not returned
@@ -512,7 +519,6 @@ describe.only('BlindAuction', () => {
         expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0.1, 0.01) // stake refund (0.2), less the bid (0.1)
         expect(sealedBid.bidder).to.equal(zeroAddress)
         expect(sealedBid.stake).to.equal(0)
-        expect(sealedBid.active).to.equal(false)
 
         const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(0)
         expect(highestUnsealedBid.bidder).to.equal(bidder1.address)
@@ -536,7 +542,6 @@ describe.only('BlindAuction', () => {
         expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // stake refund (0.2), less the bid (0.1)
         expect(sealedBid.bidder).to.equal(zeroAddress)
         expect(sealedBid.stake).to.equal(0)
-        expect(sealedBid.active).to.equal(false)
 
         const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(invalidTokenId)
         expect(highestUnsealedBid.bidder).to.equal(zeroAddress)
@@ -655,7 +660,6 @@ describe.only('BlindAuction', () => {
         expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // full stake refund (0.2)
         expect(sealedBid1.bidder).to.equal(zeroAddress)
         expect(sealedBid1.stake).to.equal(0)
-        expect(sealedBid1.active).to.equal(false)
 
         const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(0)
         expect(highestUnsealedBid.bidder).to.equal(bidder2.address)

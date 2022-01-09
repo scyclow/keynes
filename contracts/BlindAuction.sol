@@ -13,7 +13,6 @@ contract BlindAuction {
   struct SealedBid {
     address bidder;
     uint256 stake;
-    bool    active;
   }
 
   struct UnsealedBid {
@@ -71,19 +70,19 @@ contract BlindAuction {
     require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
     uint256 stake = hashToSealedBids[bidHash].stake;
-    _markSealedBidInnactive(bidHash);
+    _deleteSealedBid(bidHash);
     payable(msg.sender).transfer(stake);
   }
 
   function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash) external {
     require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
-    _markSealedBidInnactive(oldBidHash);
+    _deleteSealedBid(oldBidHash);
     _createNewSealedBid(newBidHash, hashToSealedBids[oldBidHash].stake, msg.sender);
   }
 
-  function _markSealedBidInnactive(bytes32 bidHash) private {
-    require(hashToSealedBids[bidHash].active == true, "Bid is already marked innactive");
+  function _deleteSealedBid(bytes32 bidHash) private {
+    require(hashToSealedBids[bidHash].bidder != address(0), "Bid is already marked innactive");
     require(msg.sender == hashToSealedBids[bidHash].bidder, "Bid can only be withdrawn by the bidder");
 
     delete hashToSealedBids[bidHash];
@@ -94,7 +93,6 @@ contract BlindAuction {
 
     hashToSealedBids[bidHash].bidder = bidder;
     hashToSealedBids[bidHash].stake = stake;
-    hashToSealedBids[bidHash].active = true;
   }
 
   function unsealBid(uint256 tokenId, uint256 amount) external payable nonReentrant {
@@ -103,9 +101,9 @@ contract BlindAuction {
     bytes32 bidHash = hashBid(tokenId, amount, msg.sender);
     SealedBid memory sealedBid = hashToSealedBids[bidHash];
 
-    require(sealedBid.active == true, "Bid must be active to be unsealed");
+    require(sealedBid.bidder != address(0), "Bid must be active to be unsealed");
     require(sealedBid.stake > 0, "Stake must be positive to unseal");
-    _markSealedBidInnactive(bidHash);
+    _deleteSealedBid(bidHash);
 
     UnsealedBid storage highestUnsealedBid = tokenIdToHighestUnsealedBid[tokenId];
 
