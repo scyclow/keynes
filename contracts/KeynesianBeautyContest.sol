@@ -51,6 +51,10 @@ contract KeynesianBeautyContest is ERC721, Ownable {
     return maxTokenCount;
   }
 
+  function exists(uint256 tokenId) external view returns (bool) {
+    return _exists(tokenId);
+  }
+
   function mint(address to, uint256 tokenId) external onlyMinter {
     require(tokenId < maxTokenCount, 'Invalid tokenId');
     _mint(to, tokenId);

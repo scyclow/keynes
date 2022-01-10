@@ -6,6 +6,7 @@ pragma solidity ^0.8.11;
 interface IKeynesianBeautyContest {
   function mint(address to, uint256 tokenId) external;
   function owner() external view returns (address);
+  function exists(uint256 tokenId) external view returns (bool);
 }
 
 
@@ -18,7 +19,6 @@ contract BlindAuction {
   struct UnsealedBid {
     address bidder;
     uint256 amount;
-    bool    claimed;
   }
 
   enum AuctionPhase {
@@ -77,12 +77,12 @@ contract BlindAuction {
   function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash) external {
     require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
-    _deleteSealedBid(oldBidHash);
     _createNewSealedBid(newBidHash, hashToSealedBids[oldBidHash].stake, msg.sender);
+    _deleteSealedBid(oldBidHash);
   }
 
   function _deleteSealedBid(bytes32 bidHash) private {
-    require(hashToSealedBids[bidHash].bidder != address(0), "Bid is already marked innactive");
+    require(hashToSealedBids[bidHash].bidder != address(0), "Bid does not exist");
     require(msg.sender == hashToSealedBids[bidHash].bidder, "Bid can only be withdrawn by the bidder");
 
     delete hashToSealedBids[bidHash];
@@ -107,7 +107,7 @@ contract BlindAuction {
 
     UnsealedBid storage highestUnsealedBid = tokenIdToHighestUnsealedBid[tokenId];
 
-    if (amount > highestUnsealedBid.amount && tokenId < 100) {
+    if (amount > highestUnsealedBid.amount && tokenId < 100 && !kbcContract.exists(tokenId)) {
       // if sender is the highest bider for the token and the token is valid...
       // refund the current highest bidder
       payable(highestUnsealedBid.bidder).transfer(highestUnsealedBid.amount);
@@ -135,19 +135,18 @@ contract BlindAuction {
     require(auctionPhase == AuctionPhase.CLAIM, "Tokens can only be claimed in the CLAIM phase");
     UnsealedBid storage unsealedBid = tokenIdToHighestUnsealedBid[tokenId];
     require(unsealedBid.bidder == msg.sender, "Token can only be claimed by highest bidder for token");
-    require(!unsealedBid.claimed, "Token has already been claimed");
-    unsealedBid.claimed = true;
+    require(!kbcContract.exists(tokenId), "Token has already been claimed");
 
     kbcContract.mint(unsealedBid.bidder, tokenId);
   }
 
-  function withdrawSalesRevenue() external onlyOwner {
+  function withdrawBids() external onlyOwner {
     require(auctionPhase == AuctionPhase.CLAIM, "Funds can only be withdrawn in the CLAIM phase");
     payable(msg.sender).transfer(address(this).balance);
   }
 
-  function changeAuctionStateBidding() external onlyOwner { auctionPhase = AuctionPhase.BIDDING; }
-  function changeAuctionStatePaused() external onlyOwner { auctionPhase = AuctionPhase.PAUSED; }
-  function changeAuctionStateReveal() external onlyOwner { auctionPhase = AuctionPhase.REVEAL; }
-  function changeAuctionStateClaim() external onlyOwner { auctionPhase = AuctionPhase.CLAIM; }
+  function changeAuctionPhaseBidding() external onlyOwner { auctionPhase = AuctionPhase.BIDDING; }
+  function changeAuctionPhasePaused() external onlyOwner { auctionPhase = AuctionPhase.PAUSED; }
+  function changeAuctionPhaseReveal() external onlyOwner { auctionPhase = AuctionPhase.REVEAL; }
+  function changeAuctionPhaseClaim() external onlyOwner { auctionPhase = AuctionPhase.CLAIM; }
 }
