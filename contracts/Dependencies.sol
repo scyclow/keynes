@@ -244,8 +244,6 @@ library Address {
         return size > 0;
     }
 
-    // Don't need any of this
-
     // /**
     //  * @dev Replacement for Solidity's `transfer`: sends `amount` wei to
     //  * `recipient`, forwarding all available gas and reverting on errors.
@@ -262,12 +260,12 @@ library Address {
     //  * {ReentrancyGuard} or the
     //  * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
     //  */
-    // function sendValue(address payable recipient, uint256 amount) internal {
-    //     require(address(this).balance >= amount, "Address: insufficient balance");
+    function sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
-    //     (bool success, ) = recipient.call{value: amount}("");
-    //     require(success, "Address: unable to send value, recipient may have reverted");
-    // }
+        (bool success, ) = recipient.call{value: amount}("");
+        require(success, "Address: unable to send value, recipient may have reverted");
+    }
 
     // /**
     //  * @dev Performs a Solidity function call using a low level `call`. A
@@ -287,9 +285,9 @@ library Address {
     //  *
     //  * _Available since v3.1._
     //  */
-    // function functionCall(address target, bytes memory data) internal returns (bytes memory) {
-    //     return functionCall(target, data, "Address: low-level call failed");
-    // }
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionCall(target, data, "Address: low-level call failed");
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`], but with
@@ -297,13 +295,13 @@ library Address {
     //  *
     //  * _Available since v3.1._
     //  */
-    // function functionCall(
-    //     address target,
-    //     bytes memory data,
-    //     string memory errorMessage
-    // ) internal returns (bytes memory) {
-    //     return functionCallWithValue(target, data, 0, errorMessage);
-    // }
+    function functionCall(
+        address target,
+        bytes memory data,
+        string memory errorMessage
+    ) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, 0, errorMessage);
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
@@ -316,13 +314,13 @@ library Address {
     //  *
     //  * _Available since v3.1._
     //  */
-    // function functionCallWithValue(
-    //     address target,
-    //     bytes memory data,
-    //     uint256 value
-    // ) internal returns (bytes memory) {
-    //     return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
-    // }
+    function functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 value
+    ) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, value, "Address: low-level call with value failed");
+    }
 
     // *
     //  * @dev Same as {xref-Address-functionCallWithValue-address-bytes-uint256-}[`functionCallWithValue`], but
@@ -330,18 +328,18 @@ library Address {
     //  *
     //  * _Available since v3.1._
 
-    // function functionCallWithValue(
-    //     address target,
-    //     bytes memory data,
-    //     uint256 value,
-    //     string memory errorMessage
-    // ) internal returns (bytes memory) {
-    //     require(address(this).balance >= value, "Address: insufficient balance for call");
-    //     require(isContract(target), "Address: call to non-contract");
+    function functionCallWithValue(
+        address target,
+        bytes memory data,
+        uint256 value,
+        string memory errorMessage
+    ) internal returns (bytes memory) {
+        require(address(this).balance >= value, "Address: insufficient balance for call");
+        require(isContract(target), "Address: call to non-contract");
 
-    //     (bool success, bytes memory returndata) = target.call{value: value}(data);
-    //     return verifyCallResult(success, returndata, errorMessage);
-    // }
+        (bool success, bytes memory returndata) = target.call{value: value}(data);
+        return verifyCallResult(success, returndata, errorMessage);
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
@@ -349,9 +347,9 @@ library Address {
     //  *
     //  * _Available since v3.3._
     //  */
-    // function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
-    //     return functionStaticCall(target, data, "Address: low-level static call failed");
-    // }
+    function functionStaticCall(address target, bytes memory data) internal view returns (bytes memory) {
+        return functionStaticCall(target, data, "Address: low-level static call failed");
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
@@ -359,16 +357,16 @@ library Address {
     //  *
     //  * _Available since v3.3._
     //  */
-    // function functionStaticCall(
-    //     address target,
-    //     bytes memory data,
-    //     string memory errorMessage
-    // ) internal view returns (bytes memory) {
-    //     require(isContract(target), "Address: static call to non-contract");
+    function functionStaticCall(
+        address target,
+        bytes memory data,
+        string memory errorMessage
+    ) internal view returns (bytes memory) {
+        require(isContract(target), "Address: static call to non-contract");
 
-    //     (bool success, bytes memory returndata) = target.staticcall(data);
-    //     return verifyCallResult(success, returndata, errorMessage);
-    // }
+        (bool success, bytes memory returndata) = target.staticcall(data);
+        return verifyCallResult(success, returndata, errorMessage);
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-}[`functionCall`],
@@ -376,9 +374,9 @@ library Address {
     //  *
     //  * _Available since v3.4._
     //  */
-    // function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
-    //     return functionDelegateCall(target, data, "Address: low-level delegate call failed");
-    // }
+    function functionDelegateCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionDelegateCall(target, data, "Address: low-level delegate call failed");
+    }
 
     // /**
     //  * @dev Same as {xref-Address-functionCall-address-bytes-string-}[`functionCall`],
@@ -386,16 +384,16 @@ library Address {
     //  *
     //  * _Available since v3.4._
     //  */
-    // function functionDelegateCall(
-    //     address target,
-    //     bytes memory data,
-    //     string memory errorMessage
-    // ) internal returns (bytes memory) {
-    //     require(isContract(target), "Address: delegate call to non-contract");
+    function functionDelegateCall(
+        address target,
+        bytes memory data,
+        string memory errorMessage
+    ) internal returns (bytes memory) {
+        require(isContract(target), "Address: delegate call to non-contract");
 
-    //     (bool success, bytes memory returndata) = target.delegatecall(data);
-    //     return verifyCallResult(success, returndata, errorMessage);
-    // }
+        (bool success, bytes memory returndata) = target.delegatecall(data);
+        return verifyCallResult(success, returndata, errorMessage);
+    }
 
     // /**
     //  * @dev Tool to verifies that a low level call was successful, and revert if it wasn't, either by bubbling the
@@ -403,27 +401,27 @@ library Address {
     //  *
     //  * _Available since v4.3._
     //  */
-    // function verifyCallResult(
-    //     bool success,
-    //     bytes memory returndata,
-    //     string memory errorMessage
-    // ) internal pure returns (bytes memory) {
-    //     if (success) {
-    //         return returndata;
-    //     } else {
-    //         // Look for revert reason and bubble it up if present
-    //         if (returndata.length > 0) {
-    //             // The easiest way to bubble the revert reason is using memory via assembly
+    function verifyCallResult(
+        bool success,
+        bytes memory returndata,
+        string memory errorMessage
+    ) internal pure returns (bytes memory) {
+        if (success) {
+            return returndata;
+        } else {
+            // Look for revert reason and bubble it up if present
+            if (returndata.length > 0) {
+                // The easiest way to bubble the revert reason is using memory via assembly
 
-    //             assembly {
-    //                 let returndata_size := mload(returndata)
-    //                 revert(add(32, returndata), returndata_size)
-    //             }
-    //         } else {
-    //             revert(errorMessage);
-    //         }
-    //     }
-    // }
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert(errorMessage);
+            }
+        }
+    }
 }
 
 /**
@@ -480,36 +478,36 @@ library Strings {
 
     // Don't need these
 
-    // /**
-    //  * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
-    //  */
-    // function toHexString(uint256 value) internal pure returns (string memory) {
-    //     if (value == 0) {
-    //         return "0x00";
-    //     }
-    //     uint256 temp = value;
-    //     uint256 length = 0;
-    //     while (temp != 0) {
-    //         length++;
-    //         temp >>= 8;
-    //     }
-    //     return toHexString(value, length);
-    // }
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
+     */
+    function toHexString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0x00";
+        }
+        uint256 temp = value;
+        uint256 length = 0;
+        while (temp != 0) {
+            length++;
+            temp >>= 8;
+        }
+        return toHexString(value, length);
+    }
 
-    // *
-    //  * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
-
-    // function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
-    //     bytes memory buffer = new bytes(2 * length + 2);
-    //     buffer[0] = "0";
-    //     buffer[1] = "x";
-    //     for (uint256 i = 2 * length + 1; i > 1; --i) {
-    //         buffer[i] = _HEX_SYMBOLS[value & 0xf];
-    //         value >>= 4;
-    //     }
-    //     require(value == 0, "Strings: hex length insufficient");
-    //     return string(buffer);
-    // }
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
+     */
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        for (uint256 i = 2 * length + 1; i > 1; --i) {
+            buffer[i] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
+    }
 }
 
 
@@ -519,62 +517,62 @@ library Strings {
 /// @title Base64
 /// @notice Provides a function for encoding some bytes in base64
 /// @author Brecht Devos <brecht@loopring.org>
-library Base64 {
-    bytes internal constant TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// library Base64 {
+//     bytes internal constant TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-    /// @notice Encodes some bytes to the base64 representation
-    function encode(bytes memory data) internal pure returns (string memory) {
-        uint256 len = data.length;
-        if (len == 0) return "";
+//     /// @notice Encodes some bytes to the base64 representation
+//     function encode(bytes memory data) internal pure returns (string memory) {
+//         uint256 len = data.length;
+//         if (len == 0) return "";
 
-        // multiply by 4/3 rounded up
-        uint256 encodedLen = 4 * ((len + 2) / 3);
+//         // multiply by 4/3 rounded up
+//         uint256 encodedLen = 4 * ((len + 2) / 3);
 
-        // Add some extra buffer at the end
-        bytes memory result = new bytes(encodedLen + 32);
+//         // Add some extra buffer at the end
+//         bytes memory result = new bytes(encodedLen + 32);
 
-        bytes memory table = TABLE;
+//         bytes memory table = TABLE;
 
-        assembly {
-            let tablePtr := add(table, 1)
-            let resultPtr := add(result, 32)
+//         assembly {
+//             let tablePtr := add(table, 1)
+//             let resultPtr := add(result, 32)
 
-            for {
-                let i := 0
-            } lt(i, len) {
+//             for {
+//                 let i := 0
+//             } lt(i, len) {
 
-            } {
-                i := add(i, 3)
-                let input := and(mload(add(data, i)), 0xffffff)
+//             } {
+//                 i := add(i, 3)
+//                 let input := and(mload(add(data, i)), 0xffffff)
 
-                let out := mload(add(tablePtr, and(shr(18, input), 0x3F)))
-                out := shl(8, out)
-                out := add(out, and(mload(add(tablePtr, and(shr(12, input), 0x3F))), 0xFF))
-                out := shl(8, out)
-                out := add(out, and(mload(add(tablePtr, and(shr(6, input), 0x3F))), 0xFF))
-                out := shl(8, out)
-                out := add(out, and(mload(add(tablePtr, and(input, 0x3F))), 0xFF))
-                out := shl(224, out)
+//                 let out := mload(add(tablePtr, and(shr(18, input), 0x3F)))
+//                 out := shl(8, out)
+//                 out := add(out, and(mload(add(tablePtr, and(shr(12, input), 0x3F))), 0xFF))
+//                 out := shl(8, out)
+//                 out := add(out, and(mload(add(tablePtr, and(shr(6, input), 0x3F))), 0xFF))
+//                 out := shl(8, out)
+//                 out := add(out, and(mload(add(tablePtr, and(input, 0x3F))), 0xFF))
+//                 out := shl(224, out)
 
-                mstore(resultPtr, out)
+//                 mstore(resultPtr, out)
 
-                resultPtr := add(resultPtr, 4)
-            }
+//                 resultPtr := add(resultPtr, 4)
+//             }
 
-            switch mod(len, 3)
-            case 1 {
-                mstore(sub(resultPtr, 2), shl(240, 0x3d3d))
-            }
-            case 2 {
-                mstore(sub(resultPtr, 1), shl(248, 0x3d))
-            }
+//             switch mod(len, 3)
+//             case 1 {
+//                 mstore(sub(resultPtr, 2), shl(240, 0x3d3d))
+//             }
+//             case 2 {
+//                 mstore(sub(resultPtr, 1), shl(248, 0x3d))
+//             }
 
-            mstore(result, encodedLen)
-        }
+//             mstore(result, encodedLen)
+//         }
 
-        return string(result);
-    }
-}
+//         return string(result);
+//     }
+// }
 
 /**
  * @dev Implementation of the {IERC165} interface.

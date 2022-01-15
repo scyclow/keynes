@@ -12,6 +12,7 @@
     "@zoralabs/nft-components": "^0.2.2",
     "@zoralabs/nft-hooks": "^0.7.2",
     "abortcontroller-polyfill": "^1.7.3",
+    "ethers": "^5.5.3",
     "graphql": "^16.0.1",
     "lodash": "^4.17.21",
     "react": "^17.0.2",
@@ -19,7 +20,8 @@
     "react-helmet": "^6.1.0",
     "react-router-dom": "^6.0.2",
     "react-scripts": "4.0.3",
-    "web-vitals": "^1.1.2"
+    "web-vitals": "^1.1.2",
+    "web3modal": "^1.9.5"
   },
   "scripts": {
     "start": "react-scripts start",

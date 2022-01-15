@@ -17,56 +17,131 @@ const parseMetadata = metadata => JSON.parse(Buffer.from(metadata.split(',')[1],
 
 
 describe('KeynesianBeautyContest Base', () => {
-  it('minting should work', async () => {
-    const [
-      _, __,
-      owner,
-      notOwner,
-      ...signers
-    ] = await ethers.getSigners()
-    const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
-    const KBC = await KBCFactory.deploy()
-    await KBC.deployed()
+  describe('minting', () => {
+    it('should work', async () => {
+      const [
+        _, __,
+        owner,
+        notOwner,
+        ...signers
+      ] = await ethers.getSigners()
+      const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
+      const KBC = await KBCFactory.deploy()
+      await KBC.deployed()
+
+      await KBC.connect(owner).mint(owner.address, 0)
+      await KBC.connect(owner).mint(owner.address, 1)
+      await KBC.connect(owner).mint(notOwner.address, 2)
+
+      expect(await KBC.connect(owner).exists(0)).to.equal(true)
+      expect(await KBC.connect(owner).exists(1)).to.equal(true)
+      expect(await KBC.connect(owner).exists(2)).to.equal(true)
+      expect(await KBC.connect(owner).exists(3)).to.equal(false)
 
 
+      await expectFailure(() =>
+        KBC.connect(notOwner).mint(notOwner.address, 3),
+        'Caller is not the minting address'
+      )
 
+      for (let id=3; id<100; id++) {
+        await KBC.connect(owner).mint(owner.address, id)
+      }
 
-    await KBC.connect(owner).mint(owner.address, 0)
-    await KBC.connect(owner).mint(owner.address, 1)
-    await KBC.connect(owner).mint(notOwner.address, 2)
+      await expectFailure(() =>
+        KBC.connect(owner).mint(owner.address, 99),
+        'ERC721: token already minted'
+      )
 
+      await expectFailure(() =>
+        KBC.connect(owner).mint(owner.address, -1)
+      )
 
-    await expectFailure(() =>
-      KBC.connect(notOwner).mint(notOwner.address, 3),
-      'Caller is not the minting address'
-    )
+      await expectFailure(() =>
+        KBC.connect(owner).mint(notOwner.address, 100),
+        'Invalid tokenId'
+      )
 
-    for (let id=3; id<100; id++) {
-      await KBC.connect(owner).mint(owner.address, id)
-    }
+      expect(await KBC.connect(owner).exists(3)).to.equal(true)
+      expect(await KBC.connect(owner).exists(3)).to.equal(true)
+      expect(await KBC.connect(owner).exists(100)).to.equal(false)
 
-    await expectFailure(() =>
-      KBC.connect(owner).mint(owner.address, 99),
-      'ERC721: token already minted'
-    )
-
-    await expectFailure(() =>
-      KBC.connect(owner).mint(owner.address, -1)
-    )
-
-    await expectFailure(() =>
-      KBC.connect(owner).mint(notOwner.address, 100),
-      'Invalid tokenId'
-    )
-
-    expect(await KBC.connect(owner).totalSupply()).to.equal(100)
-    expect(await KBC.connect(owner).ownerOf(0)).to.equal(owner.address)
-    expect(await KBC.connect(owner).ownerOf(1)).to.equal(owner.address)
-    expect(await KBC.connect(owner).ownerOf(2)).to.equal(notOwner.address)
-    expect(await KBC.connect(owner).balanceOf(owner.address)).to.equal(99)
-    expect(await KBC.connect(owner).balanceOf(notOwner.address)).to.equal(1)
+      expect(await KBC.connect(owner).totalSupply()).to.equal(100)
+      expect(await KBC.connect(owner).ownerOf(0)).to.equal(owner.address)
+      expect(await KBC.connect(owner).ownerOf(1)).to.equal(owner.address)
+      expect(await KBC.connect(owner).ownerOf(2)).to.equal(notOwner.address)
+      expect(await KBC.connect(owner).balanceOf(owner.address)).to.equal(99)
+      expect(await KBC.connect(owner).balanceOf(notOwner.address)).to.equal(1)
+    })
   })
 
+  describe('setRoyaltyInfo', () => {
+    it('should work', async () => {
+      const [
+        _, __,
+        owner,
+        notOwner,
+        ...signers
+      ] = await ethers.getSigners()
+      const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
+      const KBC = await KBCFactory.deploy()
+      await KBC.deployed()
+
+      const ONE_ETH = ethers.utils.parseEther('1')
+
+      const royaltyInfo0 = await KBC.connect(owner).royaltyInfo(0, ONE_ETH)
+
+      expect(royaltyInfo0[0]).to.equal(owner.address)
+      expect(num(royaltyInfo0[1])).to.equal(0.1)
+
+      await KBC.connect(owner).setRoyaltyInfo(notOwner.address, 500)
+      const royaltyInfo1 = await KBC.connect(owner).royaltyInfo(0, ONE_ETH)
+      expect(royaltyInfo1[0]).to.equal(notOwner.address)
+      expect(num(royaltyInfo1[1])).to.equal(0.05)
+
+      await expectFailure(() =>
+        KBC.connect(notOwner).setRoyaltyInfo(owner.address, 1),
+        'Ownable'
+      )
+    })
+  })
+
+  describe('events', () => {
+    it('events should work', async () => {
+      const [
+        _, __,
+        owner,
+        tokenHolder1,
+        tokenHolder2,
+        ...signers
+      ] = await ethers.getSigners()
+      const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
+      const KBC = await KBCFactory.deploy()
+      await KBC.deployed()
+
+      await KBC.connect(owner).mint(owner.address, 0)
+      await KBC.connect(owner).mint(tokenHolder1.address, 1)
+      await KBC.connect(owner).mint(tokenHolder2.address, 2)
+
+      await KBC.connect(owner).emitProjectEvent('projectGreeting', 'Hello project')
+      await KBC.connect(owner).emitTokenEvent(1, 'tokenGreeting', 'Hello token 1')
+      await KBC.connect(owner).emitTokenEvent(2, 'tokenGreeting', 'Hello token 2')
+      await KBC.connect(tokenHolder1).emitTokenEvent(1, 'tokenGreeting', 'Hello token 1 holder')
+      await KBC.connect(tokenHolder2).emitTokenEvent(2, 'tokenGreeting', 'Hello token 2 holder')
+
+      await expectFailure(() =>
+        KBC.connect(tokenHolder2).emitProjectEvent('projectGreeting', 'wrong project event'),
+        'Ownable:'
+      )
+      await expectFailure(() =>
+        KBC.connect(tokenHolder2).emitTokenEvent(1, 'tokenGreeting', 'wrong token event'),
+        'Only project or token owner can emit token event'
+      )
+    })
+  })
+})
+
+describe('TokenURI', () => {
   it('metadata should work', async () => {
     const [
       _, __,
@@ -77,6 +152,17 @@ describe('KeynesianBeautyContest Base', () => {
     const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
     const KBC = await KBCFactory.deploy()
     await KBC.deployed()
+
+    const TokenURIFactory = await ethers.getContractFactory('TokenURI', owner)
+    const TokenURI = await TokenURIFactory.deploy(KBC.address)
+    await TokenURI.deployed()
+
+    await KBC.connect(owner).setTokenURIPointer(TokenURI.address)
+    await expectFailure(() =>
+      KBC.connect(notOwner).setTokenURIPointer(KBC.address),
+      'Ownable'
+
+    )
 
     await KBC.connect(owner).mint(owner.address, 0)
     await KBC.connect(owner).mint(owner.address, 1)
@@ -91,20 +177,20 @@ describe('KeynesianBeautyContest Base', () => {
       baseExternalUrl: 'https://keynesian.beauty/',
       license: 'CC BY-NC 4.0',
     }
-    await KBC.connect(owner).setBaseMetadata(
+    await TokenURI.connect(owner).setBaseMetadata(
       baseMetadata.baseImgUrl,
       baseMetadata.imgExtension,
       baseMetadata.baseExternalUrl,
       baseMetadata.license,
     )
 
-    await KBC.connect(owner).setTokenMetadata(
+    await TokenURI.connect(owner).setTokenMetadata(
       0,
       'Alice',
       'Her favorite movie is based on what she thinks your favorite movie is'
     )
 
-    await KBC.connect(owner).batchSetTokenMetadata(
+    await TokenURI.connect(owner).batchSetTokenMetadata(
       [1, 2, 3, 4, 5],
       [
         'Betty',
@@ -122,11 +208,8 @@ describe('KeynesianBeautyContest Base', () => {
       ]
     )
 
-
-
     const metadata0 = await KBC.connect(owner).tokenURI(0)
     expect(parseMetadata(metadata0)).to.deep.equal({
-      tokenId: '0',
       name: 'Alice',
       description: 'Her favorite movie is based on what she thinks your favorite movie is',
       image: baseMetadata.baseImgUrl + '0' + baseMetadata.imgExtension,
@@ -136,7 +219,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata1 = await KBC.connect(owner).tokenURI(1)
     expect(parseMetadata(metadata1)).to.deep.equal({
-      tokenId: '1',
       name: 'Betty',
       description: 'Interned at the RAND corporation in high school',
       image: baseMetadata.baseImgUrl + '1' + baseMetadata.imgExtension,
@@ -146,7 +228,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata2 = await KBC.connect(owner).tokenURI(2)
     expect(parseMetadata(metadata2)).to.deep.equal({
-      tokenId: '2',
       name: 'Catherine',
       description: 'Dressed as a pirate for the last seven halloweens',
       image: baseMetadata.baseImgUrl + '2' + baseMetadata.imgExtension,
@@ -157,7 +238,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata3 = await KBC.connect(owner).tokenURI(3)
     expect(parseMetadata(metadata3)).to.deep.equal({
-      tokenId: '3',
       name: 'Diane',
       description: 'Prefers to meet friends under the clock at Grand Central at noon',
       image: baseMetadata.baseImgUrl + '3' + baseMetadata.imgExtension,
@@ -168,7 +248,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata4 = await KBC.connect(owner).tokenURI(4)
     expect(parseMetadata(metadata4)).to.deep.equal({
-      tokenId: '4',
       name: 'Eve',
       description: 'Thinks Austrian business cycle theory is overrated',
       image: baseMetadata.baseImgUrl + '4' + baseMetadata.imgExtension,
@@ -179,7 +258,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata5 = await KBC.connect(owner).tokenURI(5)
     expect(parseMetadata(metadata5)).to.deep.equal({
-      tokenId: '5',
       name: 'Fionna',
       description: 'Prefers tullips over roses',
       image: baseMetadata.baseImgUrl + '5' + baseMetadata.imgExtension,
@@ -194,14 +272,14 @@ describe('KeynesianBeautyContest Base', () => {
       baseExternalUrl: 'https://steviep.xyz/',
       license: 'CC0',
     }
-    await KBC.connect(owner).setBaseMetadata(
+    await TokenURI.connect(owner).setBaseMetadata(
       updatedMetadata.baseImgUrl,
       updatedMetadata.imgExtension,
       updatedMetadata.baseExternalUrl,
       updatedMetadata.license,
     )
 
-    await KBC.connect(owner).setTokenMetadata(
+    await TokenURI.connect(owner).setTokenMetadata(
       0,
       'Grace',
       'Prefers to be conspicuous in her consumption'
@@ -209,7 +287,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata0_1 = await KBC.connect(owner).tokenURI(0)
     expect(parseMetadata(metadata0_1)).to.deep.equal({
-      tokenId: '0',
       name: 'Grace',
       description: 'Prefers to be conspicuous in her consumption',
       image: updatedMetadata.baseImgUrl + '0' + updatedMetadata.imgExtension,
@@ -219,7 +296,6 @@ describe('KeynesianBeautyContest Base', () => {
 
     const metadata1_1 = await KBC.connect(owner).tokenURI(1)
     expect(parseMetadata(metadata1_1)).to.deep.equal({
-      tokenId: '1',
       name: 'Betty',
       description: 'Interned at the RAND corporation in high school',
       image: updatedMetadata.baseImgUrl + '1' + updatedMetadata.imgExtension,
@@ -228,7 +304,7 @@ describe('KeynesianBeautyContest Base', () => {
     })
 
     await expectFailure(() =>
-      KBC.connect(notOwner).setBaseMetadata(
+      TokenURI.connect(notOwner).setBaseMetadata(
         'google.com/',
         '.svg',
         'vonmisesinstitute.com/',
@@ -238,7 +314,7 @@ describe('KeynesianBeautyContest Base', () => {
     )
 
     await expectFailure(() =>
-      KBC.connect(notOwner).setTokenMetadata(
+      TokenURI.connect(notOwner).setTokenMetadata(
         0,
         'Bob',
         'Bob likes Hayek'
@@ -247,36 +323,9 @@ describe('KeynesianBeautyContest Base', () => {
     )
 
     await expectFailure(() =>
-      KBC.connect(notOwner).batchSetTokenMetadata([1], ['Charlie'], ['Charlie likes von mises']),
+      TokenURI.connect(notOwner).batchSetTokenMetadata([1], ['Charlie'], ['Charlie likes von mises']),
       'Ownable'
     )
-  })
-
-  it('token uri redirecting', async () => {
-    const [
-      _, __,
-      owner,
-      notOwner,
-      ...signers
-    ] = await ethers.getSigners()
-    const KBCFactory = await ethers.getContractFactory('KeynesianBeautyContest', owner)
-    const KBC = await KBCFactory.deploy()
-    await KBC.deployed()
-
-    const TokenURIFactory = await ethers.getContractFactory('MockTokenURI', owner)
-    const TokenURI = await TokenURIFactory.deploy()
-    await TokenURI.deployed()
-
-    await KBC.connect(owner).mint(owner.address, 0)
-
-    await expectFailure(() =>
-      KBC.connect(notOwner).setUseURIPointer(true, KBC.address),
-      'Ownable'
-    )
-    KBC.connect(owner).setUseURIPointer(true, TokenURI.address)
-
-    const metadata0 = await KBC.connect(owner).tokenURI(0)
-    expect(metadata0).to.deep.equal('{"prop": "val"}')
   })
 
   it('metadata gas test', async () => {
@@ -290,6 +339,12 @@ describe('KeynesianBeautyContest Base', () => {
     const KBC = await KBCFactory.deploy()
     await KBC.deployed()
 
+    const TokenURIFactory = await ethers.getContractFactory('TokenURI', owner)
+    const TokenURI = await TokenURIFactory.deploy(KBC.address)
+    await TokenURI.deployed()
+
+    await KBC.connect(owner).setTokenURIPointer(TokenURI.address)
+
     const name = 'XXXXXXXXXXXX'
     const description = 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
     const batchedIds = []
@@ -297,7 +352,7 @@ describe('KeynesianBeautyContest Base', () => {
     const batchedDescriptions = []
 
     for (let i=0; i<100; i++) {
-      await KBC.connect(owner).setTokenMetadata(
+      await TokenURI.connect(owner).setTokenMetadata(
         i,
         name,
         description
@@ -308,7 +363,7 @@ describe('KeynesianBeautyContest Base', () => {
       batchedDescriptions.push(description)
     }
 
-    await KBC.connect(owner).batchSetTokenMetadata(batchedIds, batchedNames, batchedDescriptions)
+    await TokenURI.connect(owner).batchSetTokenMetadata(batchedIds, batchedNames, batchedDescriptions)
   })
 })
 
@@ -421,7 +476,7 @@ describe('BlindAuction', () => {
 
       const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
 
-      expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01)
+      expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01)
       expect(sealedBid.bidder).to.equal(zeroAddress)
       expect(sealedBid.stake).to.equal(0)
     })
@@ -439,7 +494,7 @@ describe('BlindAuction', () => {
 
       const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
 
-      expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01)
+      expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01)
       expect(sealedBid.bidder).to.equal(zeroAddress)
       expect(sealedBid.stake).to.equal(0)
     })
@@ -632,11 +687,36 @@ describe('BlindAuction', () => {
         const endingBidderBalance = num(await bidder1.getBalance())
         const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
 
-        expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // stake refund (0.2), less the bid (0.1)
+        expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01)
         expect(sealedBid.bidder).to.equal(zeroAddress)
         expect(sealedBid.stake).to.equal(0)
 
         const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(invalidTokenId)
+        expect(highestUnsealedBid.bidder).to.equal(zeroAddress)
+        expect(highestUnsealedBid.amount).to.equal(0)
+      })
+
+      it('should refund if tokenId has already been minted', async () => {
+        await KBC.connect(owner).setMintingAddress(owner.address)
+        await KBC.connect(owner).mint(owner.address, 0)
+        await KBC.connect(owner).setMintingAddress(BlindAuction.address)
+
+        const startingBidderBalance = num(await bidder1.getBalance())
+
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionPhaseReveal()
+        await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue)
+
+        const endingBidderBalance = num(await bidder1.getBalance())
+        const sealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash)
+
+        expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01) // stake refund (0.2), less the bid (0.1)
+        expect(sealedBid.bidder).to.equal(zeroAddress)
+        expect(sealedBid.stake).to.equal(0)
+
+        const highestUnsealedBid = await BlindAuction.connect(bidder1).tokenIdToHighestUnsealedBid(0)
         expect(highestUnsealedBid.bidder).to.equal(zeroAddress)
         expect(highestUnsealedBid.amount).to.equal(0)
       })
@@ -749,7 +829,7 @@ describe('BlindAuction', () => {
         const endingBidderBalance = num(await bidder1.getBalance())
 
         const sealedBid1 = await BlindAuction.connect(bidder1).hashToSealedBids(bidHash1)
-        expect(startingBidderBalance - endingBidderBalance).to.be.closeTo(0, 0.01) // full stake refund (0.2)
+        expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01) // full stake refund (0.2)
         expect(sealedBid1.bidder).to.equal(zeroAddress)
         expect(sealedBid1.stake).to.equal(0)
 
