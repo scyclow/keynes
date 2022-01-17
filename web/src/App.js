@@ -8,6 +8,22 @@ import Main from './Main'
 import Page from './Page'
 
 
+import { ethers } from "ethers"
+import Web3Modal from "web3modal"
+
+
+const providerOptions = {
+  /* See Provider Options Section */
+};
+
+const web3Modal = new Web3Modal({
+  network: "mainnet", // optional
+  cacheProvider: true, // optional
+  providerOptions // required
+});
+
+
+
 
 
 export function ScrollToTop() {
@@ -33,6 +49,12 @@ function App() {
   return (
     <>
       <BrowserRouter basename={basename}>
+        <button onClick={async () => {
+          const instance = await web3Modal.connect();
+
+          const provider = new ethers.providers.Web3Provider(instance);
+          const signer = provider.getSigner();
+        }}>Connect</button>
         <ScrollToTop />
         <Routes>
           <Route

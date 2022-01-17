@@ -12,7 +12,6 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   ITokenURI public tokenURIContract;
 
   address public mintingAddress;
-  uint256 constant private maxTokenCount = 100;
 
   address private _royaltyBenificiary;
   uint16 private _royaltyBasisPoints = 1000;
@@ -31,7 +30,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   }
 
   function totalSupply() external pure returns (uint256) {
-    return maxTokenCount;
+    return 100;
   }
 
   function exists(uint256 tokenId) external view returns (bool) {
@@ -39,7 +38,7 @@ contract KeynesianBeautyContest is ERC721, Ownable {
   }
 
   function mint(address to, uint256 tokenId) external onlyMinter {
-    require(tokenId < maxTokenCount, 'Invalid tokenId');
+    require(tokenId < 100, 'Invalid tokenId');
     _mint(to, tokenId);
   }
 

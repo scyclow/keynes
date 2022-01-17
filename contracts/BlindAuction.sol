@@ -31,6 +31,10 @@ contract BlindAuction {
   mapping(bytes32 => SealedBid) public hashToSealedBids;
   mapping(uint256 => UnsealedBid) public tokenIdToHighestUnsealedBid;
 
+  event CreateBid(bytes32 indexed hash, uint256 stake, address indexed bidder);
+  event DeleteBid(bytes32 indexed hash);
+  event RevealBid(uint256 indexed tokenId, uint256 amount, address indexed bidder);
+
 
   bool private locked;
   uint256 public minimumCollateral = 0.2 ether;
@@ -86,6 +90,7 @@ contract BlindAuction {
     require(msg.sender == hashToSealedBids[bidHash].bidder, "Bid can only be withdrawn by the bidder");
 
     delete hashToSealedBids[bidHash];
+    emit DeleteBid(bidHash);
   }
 
   function _createNewSealedBid(bytes32 bidHash, uint256 stake, address bidder) private {
@@ -93,6 +98,8 @@ contract BlindAuction {
 
     hashToSealedBids[bidHash].bidder = bidder;
     hashToSealedBids[bidHash].stake = stake;
+
+    emit CreateBid(bidHash, stake, bidder);
   }
 
   function unsealBid(uint256 tokenId, uint256 amount) external payable nonReentrant {
@@ -129,6 +136,8 @@ contract BlindAuction {
       // otherwise, refund
       payable(msg.sender).transfer(sealedBid.stake + msg.value);
     }
+
+    emit RevealBid(tokenId, amount, msg.sender);
   }
 
   function claimToken(uint256 tokenId) external {
