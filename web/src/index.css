@@ -2,18 +2,17 @@
   margin: 0;
   padding: 0;
 
-  color: #221c17;
-
   /*font-family: 'Lato', monospace;*/
   font-weight: 500;
 
-font-family: 'Luxurious Roman', cursive;
+  font-family: 'Luxurious Roman', cursive;
+  color: hsl(25deg 94% 10%);
 }
 
 
 body {
   background-color: hsl(55deg 32% 89%);
-  color: hsl(27deg 15% 18%);
+
 }
 
 

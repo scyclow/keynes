@@ -1,28 +1,14 @@
 
 import './App.css';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 import Main from './Main'
 import Page from './Page'
 
 
-import { ethers } from "ethers"
-import Web3Modal from "web3modal"
-
-
-const providerOptions = {
-  /* See Provider Options Section */
-};
-
-const web3Modal = new Web3Modal({
-  network: "mainnet", // optional
-  cacheProvider: true, // optional
-  providerOptions // required
-});
-
-
+import { useEthContext } from './hooks'
 
 
 
@@ -42,23 +28,38 @@ const basename = window.location.href.includes('steviep.xyz/keynes')
   ? '/keynes'
   : '/'
 
+
+function Header() {
+  const {
+    provider,
+    signer,
+    connectedAddress,
+    connected,
+    onConnect,
+    onDisconnect
+  } = useEthContext()
+
+  return (
+    <header>
+      <button onClick={onConnect}>Connect</button>
+      <button onClick={onDisconnect}>Disconnect</button>
+      {connectedAddress}
+    </header>
+  )
+
+}
+
 function App() {
 
 
-  const responsiveStyle = window.innerWidth < 790 ? { height: '100vh'} : {}
   return (
     <>
       <BrowserRouter basename={basename}>
-        <button onClick={async () => {
-          const instance = await web3Modal.connect();
-
-          const provider = new ethers.providers.Web3Provider(instance);
-          const signer = provider.getSigner();
-        }}>Connect</button>
+        <Header />
         <ScrollToTop />
         <Routes>
           <Route
-            path="/packets/:id"
+            path="/participants/:id"
             element={
               <Page />
             }

@@ -25,7 +25,16 @@ module.exports = {
     goerli: {
       url: STUFF.ETH_GOERLI_URL,
       accounts: [`0x${STUFF.DEV1}`]
-    }
+    },
+
+
+    hardhat: {
+      mining: {
+        auto: false,
+        interval: 5000
+      }
+    },
+
   },
 
   gasReporter: {

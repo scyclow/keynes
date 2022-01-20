@@ -32,7 +32,7 @@ contract BlindAuction {
   mapping(uint256 => UnsealedBid) public tokenIdToHighestUnsealedBid;
 
   event CreateBid(bytes32 indexed hash, uint256 stake, address indexed bidder);
-  event DeleteBid(bytes32 indexed hash);
+  event WithdrawBid(bytes32 indexed hash, address indexed bidder);
   event RevealBid(uint256 indexed tokenId, uint256 amount, address indexed bidder);
 
 
@@ -74,7 +74,7 @@ contract BlindAuction {
     require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
     uint256 stake = hashToSealedBids[bidHash].stake;
-    _deleteSealedBid(bidHash);
+    _withdrawSealedBid(bidHash);
     payable(msg.sender).transfer(stake);
   }
 
@@ -82,15 +82,15 @@ contract BlindAuction {
     require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
 
     _createNewSealedBid(newBidHash, hashToSealedBids[oldBidHash].stake, msg.sender);
-    _deleteSealedBid(oldBidHash);
+    _withdrawSealedBid(oldBidHash);
   }
 
-  function _deleteSealedBid(bytes32 bidHash) private {
+  function _withdrawSealedBid(bytes32 bidHash) private {
     require(hashToSealedBids[bidHash].bidder != address(0), "Bid does not exist");
     require(msg.sender == hashToSealedBids[bidHash].bidder, "Bid can only be withdrawn by the bidder");
 
+    emit WithdrawBid(bidHash, hashToSealedBids[bidHash].bidder);
     delete hashToSealedBids[bidHash];
-    emit DeleteBid(bidHash);
   }
 
   function _createNewSealedBid(bytes32 bidHash, uint256 stake, address bidder) private {
@@ -110,7 +110,7 @@ contract BlindAuction {
 
     require(sealedBid.bidder != address(0), "Bid must be active to be unsealed");
     require(sealedBid.stake > 0, "Stake must be positive to unseal");
-    _deleteSealedBid(bidHash);
+    _withdrawSealedBid(bidHash);
 
     UnsealedBid storage highestUnsealedBid = tokenIdToHighestUnsealedBid[tokenId];
 

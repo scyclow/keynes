@@ -1,17 +1,16 @@
 
 import './Main.css';
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 
 import { Link } from 'react-router-dom'
-
-
-import {Helmet} from 'react-helmet'
-import localTokenData from './data'
-import { prettyNumber, fmt, getTimes, useCountdown } from './utils'
 import {times} from 'lodash'
+import {Helmet} from 'react-helmet'
 
+
+import { prettyNumber, fmt, getTimes, useCountdown } from './utils'
+import { useBiddingPhase } from './hooks'
 
 
 
@@ -19,10 +18,8 @@ import {times} from 'lodash'
 
 const defaultGridSize = window.innerWidth < 750 ? 'large' : 'medium'
 export default function Main() {
-
   const [gridSize, setGridSize] = useState('xs')
-
-
+  const biddingPhase = useBiddingPhase()
 
 
   const gridSizeClasses = {
@@ -62,7 +59,8 @@ export default function Main() {
 
         <meta property="og:url" content={`https://steviep.xyz/natural-flavors`} />
         <meta name="twitter:url" content={`https://steviep.xyz/natural-flavors`} />
-        <meta name="keywords" content="natural flavors, natural, flavors, nft, nfts, photo, series, photography, art, ketchup, packet, condiment, condiment packet, trash art, crypto, crypto art, fine art photography, steve, pikelny, steve pikelny, fake internet money" />
+        <meta name="keywords" content="" />
+
         <title>{'The Keynsian Beauty Contest'}</title>
       </Helmet>
 
@@ -73,6 +71,8 @@ export default function Main() {
         </h1>
         <h2>by Barry Blitt and Steve Pikelny</h2>
       </header>
+
+      {biddingPhase}
 
 
       <section className="center">
@@ -107,7 +107,7 @@ export default function Main() {
 function Thumbnail({ data }) {
 
   return (
-    <Link to={`/packets/${data.tokenId}`}>
+    <Link to={`/participants/${data.tokenId}`}>
       <div className={`Thumbnail`}>
         <div>
           <img src={`./assets/${data.tokenId}.jpeg`} loading="lazy" />
