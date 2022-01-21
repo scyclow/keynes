@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import {Helmet} from 'react-helmet'
 
 import { pollCompletion } from './utils'
-import { useEthContext, useBiddingPhase, useLocalBidState } from './hooks'
+import { useEthContext, useBiddingPhase, useBids } from './hooks'
 import ls, { refreshBidState } from './localStorage'
 
 
@@ -37,6 +37,7 @@ export default function Page() {
         </div>
       </section>
 
+      {/* TODO check if token has already been minted. if so, don't display form */}
       <BiddingForm id={id} />
 
     </div>
@@ -51,35 +52,7 @@ function BiddingForm({ id }) {
   const {contracts, signer, connectedAddress } = useEthContext()
 
   const [bidAmount, setBidAmount] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const { bids, addBid, updateBidState } = useLocalBidState()
-
-  const onBid = async () => {
-    const hashedBid = await contracts.BlindAuction.hashBid(id, ethers.utils.parseEther(bidAmount), connectedAddress)
-
-    setIsLoading(true)
-
-    await contracts.BlindAuction.connect(signer).placeSealedBid(hashedBid, { value: ethers.utils.parseEther('0.2') })
-
-    addBid({
-      hashedBid,
-      tokenId: id,
-      bid: bidAmount,
-      bidder: connectedAddress,
-      state: 'submitted'
-    })
-
-
-    const nonNullBidder = bid => bid.bidder !== '0x0000000000000000000000000000000000000000'
-    await pollCompletion(
-      () => contracts.BlindAuction.hashToSealedBids(hashedBid).then(nonNullBidder),
-      1000
-    )
-
-    updateBidState(hashedBid, 'sealed')
-    setIsLoading(false)
-  }
-
+  const { bids, isLoading, submitBid } = useBids()
 
   return (
     <section>
@@ -87,7 +60,7 @@ function BiddingForm({ id }) {
       <p>This will require a 0.2 ETH stake</p>
       <div>
         <input value={bidAmount} placeholder="0.2 E" onChange={e => setBidAmount(e.target.value)} type="number" />
-        <button onClick={onBid}>
+        <button onClick={() => submitBid(id, bidAmount)}>
           Place Bid
         </button>
       </div>
@@ -113,8 +86,8 @@ function BidRow({ bid }) {
     <div>
       {bid.bid}
       {bid.state}
-      {biddingPhase === '1' ? <button>Widthdraw Bid</button> : false}
-      {biddingPhase === '2' ? <button>Reveal Bid</button> : false}
+      {biddingPhase === 1 ? <button>Widthdraw Bid</button> : false}
+      {biddingPhase === 2 ? <button>Reveal Bid</button> : false}
 
     </div>
   )

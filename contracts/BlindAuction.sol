@@ -71,18 +71,11 @@ contract BlindAuction {
   }
 
   function withdrawSealedBid(bytes32 bidHash) external nonReentrant {
-    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
+    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn in the BIDDING phase");
 
     uint256 stake = hashToSealedBids[bidHash].stake;
     _withdrawSealedBid(bidHash);
     payable(msg.sender).transfer(stake);
-  }
-
-  function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash) external {
-    require(auctionPhase == AuctionPhase.BIDDING, "Bid can only be withdrawn or updated in the BIDDING phase");
-
-    _createNewSealedBid(newBidHash, hashToSealedBids[oldBidHash].stake, msg.sender);
-    _withdrawSealedBid(oldBidHash);
   }
 
   function _withdrawSealedBid(bytes32 bidHash) private {

@@ -28,12 +28,12 @@ module.exports = {
     },
 
 
-    hardhat: {
-      mining: {
-        auto: false,
-        interval: 5000
-      }
-    },
+    // hardhat: {
+    //   mining: {
+    //     auto: false,
+    //     interval: 5000
+    //   }
+    // },
 
   },
 

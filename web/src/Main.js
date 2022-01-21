@@ -11,6 +11,7 @@ import {Helmet} from 'react-helmet'
 
 import { prettyNumber, fmt, getTimes, useCountdown } from './utils'
 import { useBiddingPhase } from './hooks'
+import { getActiveContractAddresses } from './config'
 
 
 
@@ -32,7 +33,7 @@ export default function Main() {
 
 
 
-  let sortedData = times(104, i => ({ tokenId: i + 1 }))
+  let sortedData = times(139, i => ({ tokenId: i + 1 }))
 
 
 
@@ -67,14 +68,15 @@ export default function Main() {
 
       <header>
         <h1>
-          The Keynesian Beauty Contest
+          Welcome to The Keynesian Beauty Contest
         </h1>
-        <h2>by Barry Blitt and Steve Pikelny</h2>
+        <div><Link to="/about">The Background</Link></div>
+        <div><Link to="/about">The Rules</Link></div>
       </header>
 
-      {biddingPhase}
+      <h2>{biddingPhase === 1 ? 'Bidding will close on X/X at X:00' : ''}</h2>
 
-
+{/*
       <section className="center">
 
           <div>
@@ -88,6 +90,7 @@ export default function Main() {
           </div>
 
       </section>
+*/}
 
       <section className={`thumbnailGrid ${gridSizeClasses[gridSize]}`}>
         {sortedData.map((d, i) => <div key={`thumbnail-${i}`}><Thumbnail data={d} key={d.tokenId} /></div>) }
@@ -95,7 +98,10 @@ export default function Main() {
 
 
       <h2 style={{ textAlign: 'center', wordWrap: 'break-word', padding: '1em'}}>
-        <a href={`https://etherscan.io/address/${window.CONTRACT_ADDR}`} target="_blank" rel="nofollow">{window.CONTRACT_ADDR}</a>
+        <div><a href={`https://etherscan.io/address/${getActiveContractAddresses().KBC}`} target="_blank" rel="nofollow">Token Contract</a></div>
+        <div><a href={`https://etherscan.io/address/${getActiveContractAddresses().BlindAuction}`} target="_blank" rel="nofollow">Auction Contract</a></div>
+        <div><a href={`https://etherscan.io/address/${getActiveContractAddresses().TokenURI}`} target="_blank" rel="nofollow">Metadata Contract</a></div>
+        <div><a href={`https://ipfs.io/ipfs/`} target="_blank" rel="nofollow">IPFS</a></div>
       </h2>
 
     </div>
@@ -112,7 +118,7 @@ function Thumbnail({ data }) {
         <div>
           <img src={`./assets/${data.tokenId}.jpeg`} loading="lazy" />
         </div>
-        {data.tokenId}
+        {/*{data.tokenId}*/}
       </div>
     </Link>
   )

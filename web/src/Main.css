@@ -20,6 +20,15 @@ h2 {
   font-family: 'Luxurious Roman', cursive;
 }
 
+p {
+  text-align: left;
+  font-size: 1.3em;
+  max-width: 1000px;
+  margin: auto;
+  margin-top: 1em;
+  line-height: 1.2;
+}
+
 .center {
   display: flex;
   justify-content: center;
@@ -36,6 +45,7 @@ h2 {
   overflow: hidden;
   height: 171px;
   width: 187px;
+  box-shadow: 0px 0px 5px;
 
 }
 .Thumbnail img {
@@ -96,10 +106,10 @@ select {
 .thumbnailGrid {
   padding: 2em;
   display: grid;
-  /*
+
   column-gap: 2em;
   grid-row-gap: 0.75em;
-  */
+
   justify-items: center;
 }
 .thumbnailGrid > * {

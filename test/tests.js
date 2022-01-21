@@ -534,19 +534,19 @@ describe('BlindAuction', () => {
       await BlindAuction.connect(owner).changeAuctionPhasePaused()
       await expectFailure(() =>
         BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
+        'Bid can only be withdrawn in the BIDDING phase'
       )
 
       await BlindAuction.connect(owner).changeAuctionPhaseReveal()
       await expectFailure(() =>
         BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
+        'Bid can only be withdrawn in the BIDDING phase'
       )
 
       await BlindAuction.connect(owner).changeAuctionPhaseClaim()
       await expectFailure(() =>
         BlindAuction.connect(bidder1).withdrawSealedBid(bidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
+        'Bid can only be withdrawn in the BIDDING phase'
       )
     })
 
@@ -554,102 +554,102 @@ describe('BlindAuction', () => {
     xit('should not allow reentry', async () => {})
   })
 
-  describe('updateSealedBid', () => {
-    it('should work', async () => {
+  // describe('updateSealedBid', () => {
+  //   it('should work', async () => {
 
-      const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
-      const newBidHash = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
+  //     const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+  //     const newBidHash = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
 
-      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
+  //     await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
 
-      const startingBidderBalance = num(await bidder1.getBalance())
-      await BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash)
-      const endingBidderBalance = num(await bidder1.getBalance())
-
-
-      const oldSealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(oldBidHash)
-      const newSealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(newBidHash)
-
-      expect(oldSealedBid.bidder).to.equal(zeroAddress)
-      expect(oldSealedBid.stake).to.equal(0)
-
-      expect(newSealedBid.bidder).to.equal(bidder1.address)
-      expect(newSealedBid.stake).to.equal(stakeValue)
-
-      expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01)
-    })
-
-    it('oldBid should not work for wrong bidder', async () => {
-      const oldBidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
-      const newBidHash1 = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
-
-      const newBidHash2 = await BlindAuction.connect(bidder2).hashBid(0, highBidValue, bidder2.address)
-
-      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash1, payableEth)
-
-      await expectFailure(() =>
-        BlindAuction.connect(bidder2).updateSealedBid(oldBidHash1, newBidHash2),
-        'Bid can only be withdrawn by the bidder'
-      )
-    })
-
-    it('oldBid cannot be innactive', async () => {
-      const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
-      const firstNewBidHash = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
-      const secondNewBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowerBidValue, bidder1.address)
+  //     const startingBidderBalance = num(await bidder1.getBalance())
+  //     await BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash)
+  //     const endingBidderBalance = num(await bidder1.getBalance())
 
 
-      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
-      await BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, firstNewBidHash)
+  //     const oldSealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(oldBidHash)
+  //     const newSealedBid = await BlindAuction.connect(bidder1).hashToSealedBids(newBidHash)
 
-      await expectFailure(() =>
-        BlindAuction.connect(bidder2).updateSealedBid(oldBidHash, secondNewBidHash),
-        'Bid does not exist'
-      )
-    })
+  //     expect(oldSealedBid.bidder).to.equal(zeroAddress)
+  //     expect(oldSealedBid.stake).to.equal(0)
 
-    it('newBid hash cannot already exist', async () => {
-      const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+  //     expect(newSealedBid.bidder).to.equal(bidder1.address)
+  //     expect(newSealedBid.stake).to.equal(stakeValue)
 
-      const newBidHash = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder1.address)
+  //     expect(startingBidderBalance).to.be.closeTo(endingBidderBalance, 0.01)
+  //   })
+
+  //   it('oldBid should not work for wrong bidder', async () => {
+  //     const oldBidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+  //     const newBidHash1 = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
+
+  //     const newBidHash2 = await BlindAuction.connect(bidder2).hashBid(0, highBidValue, bidder2.address)
+
+  //     await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash1, payableEth)
+
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder2).updateSealedBid(oldBidHash1, newBidHash2),
+  //       'Bid can only be withdrawn by the bidder'
+  //     )
+  //   })
+
+  //   it('oldBid cannot be innactive', async () => {
+  //     const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+  //     const firstNewBidHash = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
+  //     const secondNewBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowerBidValue, bidder1.address)
 
 
-      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
-      await BlindAuction.connect(bidder2).placeSealedBid(newBidHash, payableEth)
+  //     await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
+  //     await BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, firstNewBidHash)
 
-      await expectFailure(() =>
-        BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
-        'Hash for sealed bid already exists'
-      )
-    })
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder2).updateSealedBid(oldBidHash, secondNewBidHash),
+  //       'Bid does not exist'
+  //     )
+  //   })
 
-    it('should only work in the BIDDING phase', async () => {
-      const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+  //   it('newBid hash cannot already exist', async () => {
+  //     const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
 
-      const newBidHash = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder1.address)
+  //     const newBidHash = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder1.address)
 
 
-      await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
-      await BlindAuction.connect(owner).changeAuctionPhasePaused()
-      await expectFailure(() =>
-        BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
-      )
+  //     await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
+  //     await BlindAuction.connect(bidder2).placeSealedBid(newBidHash, payableEth)
 
-      await BlindAuction.connect(owner).changeAuctionPhaseReveal()
-      await expectFailure(() =>
-        BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
-      )
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
+  //       'Hash for sealed bid already exists'
+  //     )
+  //   })
 
-      await BlindAuction.connect(owner).changeAuctionPhaseClaim()
-      await expectFailure(() =>
-        BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
-        'Bid can only be withdrawn or updated in the BIDDING phase'
-      )
+  //   it('should only work in the BIDDING phase', async () => {
+  //     const oldBidHash = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
 
-    })
-  })
+  //     const newBidHash = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder1.address)
+
+
+  //     await BlindAuction.connect(bidder1).placeSealedBid(oldBidHash, payableEth)
+  //     await BlindAuction.connect(owner).changeAuctionPhasePaused()
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
+  //       'Bid can only be withdrawn in the BIDDING phase'
+  //     )
+
+  //     await BlindAuction.connect(owner).changeAuctionPhaseReveal()
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
+  //       'Bid can only be withdrawn in the BIDDING phase'
+  //     )
+
+  //     await BlindAuction.connect(owner).changeAuctionPhaseClaim()
+  //     await expectFailure(() =>
+  //       BlindAuction.connect(bidder1).updateSealedBid(oldBidHash, newBidHash),
+  //       'Bid can only be withdrawn in the BIDDING phase'
+  //     )
+
+  //   })
+  // })
 
   describe('unsealBid', () => {
     describe('no current bids', () => {

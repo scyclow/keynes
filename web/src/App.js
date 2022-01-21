@@ -6,6 +6,8 @@ import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 
 import Main from './Main'
 import Page from './Page'
+import About from './About'
+import Bids from './Bids'
 
 
 import { useEthContext } from './hooks'
@@ -70,6 +72,22 @@ function App() {
             path="/"
             element={
               <Main />
+            }
+          />
+
+          <Route
+            exact
+            path="/about"
+            element={
+              <About />
+            }
+          />
+
+          <Route
+            exact
+            path="/bids"
+            element={
+              <Bids />
             }
           />
 

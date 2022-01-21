@@ -25,6 +25,7 @@ export const providerOptions = {
   }
 };
 
+export const CHAIN = 'localhost'
 
 export const contractAddrs = {
   mainnet: {},
@@ -33,6 +34,10 @@ export const contractAddrs = {
     TokenURI: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
     BlindAuction: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
   },
+}
+
+export function getActiveContractAddresses() {
+  return contractAddrs[CHAIN]
 }
 
 export const KBCABI = [
@@ -48,7 +53,6 @@ export const BlindAuctionABI = [
   'function claimToken(uint tokenId)',
 
   'function withdrawSealedBid(bytes32 bidHash)',
-  'function updateSealedBid(bytes32 oldBidHash, bytes32 newBidHash)',
 
   'function auctionPhase() view returns (uint phase)',
   'function hashToSealedBids(bytes32 hash) view returns (tuple(address bidder, uint stake))',
@@ -59,7 +63,6 @@ export const BlindAuctionABI = [
   'event RevealBid(uint indexed tokenId, uint amount, address indexed bidder)',
 ]
 
-export const CHAIN = 'localhost'
 
 const web3Modal = new Web3Modal({
   network: CHAIN,
@@ -87,7 +90,7 @@ export const EthContextProvider = ({ children }) => {
     const connectedAddress = await signer.getAddress()
     const contracts = getContracts(CHAIN, provider)
 
-    // const contractCode = await signer.provider.getCode(contractAddrs[CHAIN].BlindAuction)
+    // const contractCode = await signer.provider.getCode(getActiveContractAddresses().BlindAuction)
     // console.log(contractCode)
 
     setProvider(provider)
@@ -129,7 +132,7 @@ export const EthContextProvider = ({ children }) => {
 
 
 export const getContracts = (chain, provider) => ({
-  KBC: new ethers.Contract(contractAddrs[chain].KBC, KBCABI, provider),
-  BlindAuction: new ethers.Contract(contractAddrs[chain].BlindAuction, BlindAuctionABI, provider),
+  KBC: new ethers.Contract(getActiveContractAddresses().KBC, KBCABI, provider),
+  BlindAuction: new ethers.Contract(getActiveContractAddresses().BlindAuction, BlindAuctionABI, provider),
 })
 
