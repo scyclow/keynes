@@ -56,4 +56,5 @@ export async function refreshBidState(contracts, bidder) {
   createBids.forEach(bid => updateBidState(bidder, bid.args.hash, 'sealed'))
   withdrawBids.forEach(bid => updateBidState(bidder, bid.args.hash, 'withdrawn'))
   revealBids.forEach(bid => updateBidState(bidder, bid.args.hash, 'revealed'))
+  console.log(revealBids)
 }

@@ -33,7 +33,7 @@ contract BlindAuction {
 
   event CreateBid(bytes32 indexed hash, uint256 stake, address indexed bidder);
   event WithdrawBid(bytes32 indexed hash, address indexed bidder);
-  event RevealBid(uint256 indexed tokenId, uint256 amount, address indexed bidder);
+  event RevealBid(bytes32 indexed hash, uint256 indexed tokenId, uint256 amount, address indexed bidder);
 
 
   bool private locked;
@@ -120,17 +120,24 @@ contract BlindAuction {
       if (amount > sealedBid.stake) {
         // If bidder's existing stake isn't high enough to support bid, require more eth
         require(msg.value >= amount - sealedBid.stake, "Updated stake not enough to support bid");
-      } else if (amount < sealedBid.stake) {
-        // If bidder's existing stake is higher than bid, return
-        payable(msg.sender).transfer(sealedBid.stake - amount);
       }
+
+      // refund bidder if their extra stake is too much
+      if (msg.value + sealedBid.stake > amount) {
+        payable(msg.sender).transfer(msg.value + sealedBid.stake - amount);
+      }
+
+      // else if (amount < sealedBid.stake) {
+      //   // If bidder's existing stake is higher than bid, return
+      //   payable(msg.sender).transfer(sealedBid.stake - amount);
+      // }
 
     } else {
       // otherwise, refund
       payable(msg.sender).transfer(sealedBid.stake + msg.value);
     }
 
-    emit RevealBid(tokenId, amount, msg.sender);
+    emit RevealBid(bidHash, tokenId, amount, msg.sender);
   }
 
   function claimToken(uint256 tokenId) external {
@@ -142,7 +149,7 @@ contract BlindAuction {
     kbcContract.mint(unsealedBid.bidder, tokenId);
   }
 
-  function withdrawBids() external onlyOwner {
+  function withdrawFunds() external onlyOwner {
     require(auctionPhase == AuctionPhase.CLAIM, "Funds can only be withdrawn in the CLAIM phase");
     payable(msg.sender).transfer(address(this).balance);
   }

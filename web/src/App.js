@@ -8,6 +8,7 @@ import Main from './Main'
 import Page from './Page'
 import About from './About'
 import Bids from './Bids'
+import Dev from './Dev'
 
 
 import { useEthContext } from './hooks'
@@ -88,6 +89,14 @@ function App() {
             path="/bids"
             element={
               <Bids />
+            }
+          />
+
+          <Route
+            exact
+            path="/dev"
+            element={
+              <Dev />
             }
           />
 

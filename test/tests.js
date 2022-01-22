@@ -894,6 +894,40 @@ describe('BlindAuction', () => {
         expect(highestUnsealedBid.amount).to.equal(highBidValue)
       })
 
+      it('should refund all msg.value if bid is lower than stake', async () => {
+        const bidHash1 = await BlindAuction.connect(bidder1).hashBid(0, highBidValue, bidder1.address)
+        const bidHash2 = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder2.address)
+
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash1, payableEth)
+        await BlindAuction.connect(bidder2).placeSealedBid(bidHash2, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionPhaseReveal()
+        await BlindAuction.connect(bidder2).unsealBid(0, lowerBidValue)
+
+        const startingBidder1Balance = num(await bidder1.getBalance())
+        await BlindAuction.connect(bidder1).unsealBid(0, highBidValue, { value: ethers.utils.parseEther('1') })
+        const endingBidder1Balance = num(await bidder1.getBalance())
+
+        expect(startingBidder1Balance - endingBidder1Balance).to.be.closeTo(0.3, 0.01)
+
+      })
+
+      it('should refund correct portion of msg.value if msg.value + stake > bid', async () => {
+        const bidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
+        const bidHash2 = await BlindAuction.connect(bidder2).hashBid(0, lowerBidValue, bidder2.address)
+
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash1, payableEth)
+        await BlindAuction.connect(bidder2).placeSealedBid(bidHash2, payableEth)
+
+        await BlindAuction.connect(owner).changeAuctionPhaseReveal()
+        await BlindAuction.connect(bidder2).unsealBid(0, lowerBidValue)
+
+        const startingBidder1Balance = num(await bidder1.getBalance())
+        await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue, { value: ethers.utils.parseEther('1') })
+        const endingBidder1Balance = num(await bidder1.getBalance())
+
+        expect(endingBidder1Balance - startingBidder1Balance).to.be.closeTo(0.1, 0.01)
+      })
       // TODO
       xit('should not allow reentry', async () => {})
     })
@@ -999,7 +1033,7 @@ describe('BlindAuction', () => {
     })
   })
 
-  describe('withdrawBids', () => {
+  describe('withdrawFunds', () => {
     it('should withdraw eth', async () => {
       const bidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)
       const bidHash2 = await BlindAuction.connect(bidder1).hashBid(1, lowBidValue, bidder1.address)
@@ -1012,7 +1046,7 @@ describe('BlindAuction', () => {
       await BlindAuction.connect(owner).changeAuctionPhaseClaim()
 
       const startingOwnerBalance = num(await owner.getBalance())
-      await BlindAuction.connect(owner).withdrawBids()
+      await BlindAuction.connect(owner).withdrawFunds()
       const endingOwnerBalance = num(await owner.getBalance())
 
       expect(endingOwnerBalance - startingOwnerBalance).to.be.closeTo(0.2, 0.001)
@@ -1026,7 +1060,7 @@ describe('BlindAuction', () => {
       await BlindAuction.connect(owner).changeAuctionPhaseClaim()
 
       await expectFailure(() =>
-        BlindAuction.connect(bidder2).withdrawBids(),
+        BlindAuction.connect(bidder2).withdrawFunds(),
         'Ownable:'
       )
     })
@@ -1038,7 +1072,7 @@ describe('BlindAuction', () => {
       await BlindAuction.connect(bidder1).unsealBid(0, lowBidValue)
 
       await expectFailure(() =>
-        BlindAuction.connect(owner).withdrawBids(),
+        BlindAuction.connect(owner).withdrawFunds(),
         'Funds can only be withdrawn in the CLAIM phase'
       )
     })

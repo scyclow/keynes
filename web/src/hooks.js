@@ -5,6 +5,7 @@ import ls, { refreshBidState } from './localStorage'
 import { pollCompletion } from './utils'
 
 
+const nullAddr = '0x0000000000000000000000000000000000000000'
 
 export const useEthContext = () => useContext(EthContext)
 
@@ -17,18 +18,23 @@ const BiddingPhases = {
 }
 
 export function useBiddingPhase() {
-  const [biddingPhase, setBiddingPhase] = useState(null)
+  const [biddingPhase, setBiddingPhase] = useState(0)
   const { contracts, loading } = useEthContext()
 
 
   useEffect(async () => {
     if (!loading) {
-      const phase = await contracts.BlindAuction.auctionPhase()
-      setBiddingPhase(phase.toString())
+      const refresh = async () => {
+        const phase = await contracts.BlindAuction.auctionPhase()
+        setBiddingPhase(Number(phase.toString()))
+        setTimeout(refresh, 3000)
+      }
+      refresh()
+
     }
   }, [loading])
 
-  return Number(biddingPhase)
+  return biddingPhase
 }
 
 
@@ -71,7 +77,7 @@ export function useBids() {
     })
 
 
-    const nonNullBidder = bid => bid.bidder !== '0x0000000000000000000000000000000000000000'
+    const nonNullBidder = bid => bid.bidder !== nullAddr
     await pollCompletion(
       () => contracts.BlindAuction.hashToSealedBids(hashedBid).then(nonNullBidder),
       1000
@@ -84,7 +90,7 @@ export function useBids() {
   const withdrawBid = async (hashedBid) => {
     setIsLoading(true)
     await contracts.BlindAuction.connect(signer).withdrawSealedBid(hashedBid)
-    const nullBidder = bid => bid.bidder === '0x0000000000000000000000000000000000000000'
+    const nullBidder = bid => bid.bidder === nullAddr
     await pollCompletion(
       () => contracts.BlindAuction.hashToSealedBids(hashedBid).then(nullBidder),
       1000
@@ -93,10 +99,70 @@ export function useBids() {
     setIsLoading(false)
   }
 
+  const revealBid = async (hashedBid, tokenId, bidAmount) => {
+    setIsLoading(true)
+    const highestBid = await contracts.BlindAuction.tokenIdToHighestUnsealedBid(tokenId)
+    const highestBidAmount = Number(ethers.utils.formatEther(highestBid.amount))
+
+    const amountToIncreaseBid = outstandingBids[hashedBid].bid > highestBidAmount
+      ? Math.max(Number(outstandingBids[hashedBid].bid - 0.2, 0))
+      : 0
+
+    await contracts.BlindAuction.connect(signer).unsealBid(
+      tokenId,
+      ethers.utils.parseEther(bidAmount),
+      { value: ethers.utils.parseEther(String(amountToIncreaseBid)) }
+    )
+
+    const nonNullBidder = bid => bid.bidder !== nullAddr
+    await pollCompletion(
+      () => contracts.BlindAuction.hashToSealedBids(hashedBid).then(nonNullBidder),
+      1000
+    )
+    updateBidState(hashedBid, 'revealed')
+    setIsLoading(false)
+  }
+
+  // const claim
+
   return {
     bids: outstandingBids,
     isLoading,
     submitBid,
     withdrawBid,
+    revealBid,
+  }
+}
+
+export function useTokenExists(tokenId) {
+  const [isLoading, setIsLoading] = useState(false)
+  const { contracts } = useEthContext()
+  const [exists, setExists] = useState(false)
+
+  useEffect(async () => {
+    if (contracts) {
+      const exists = await contracts.KBC.exists(tokenId)
+      setExists(exists)
+    }
+  }, [contracts])
+
+  return exists
+}
+
+export function useHighestBidder(tokenId) {
+  const [isLoading, setIsLoading] = useState(false)
+  const { contracts } = useEthContext()
+  const [highestBidder, setHighestBidder] = useState({ bidder: nullAddr, amount: 0 })
+
+  useEffect(async () => {
+    if (contracts) {
+      const highestBidder = await contracts.BlindAuction.tokenIdToHighestUnsealedBid(tokenId)
+      setHighestBidder(highestBidder)
+    }
+  }, [contracts])
+
+  return {
+    bidder: highestBidder.bidder,
+    amount: ethers.utils.formatEther(String(highestBidder.amount))
   }
 }

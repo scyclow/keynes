@@ -76,6 +76,10 @@ export default function Main() {
 
       <h2>{biddingPhase === 1 ? 'Bidding will close on X/X at X:00' : ''}</h2>
 
+      <div className="blue" />
+      <div className="red" />
+      <div className="green" />
+
 {/*
       <section className="center">
 

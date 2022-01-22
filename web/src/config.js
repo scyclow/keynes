@@ -61,6 +61,11 @@ export const BlindAuctionABI = [
   'event CreateBid(bytes32 indexed hash, uint stake, address indexed bidder)',
   'event WithdrawBid(bytes32 indexed hash, address indexed bidder)',
   'event RevealBid(uint indexed tokenId, uint amount, address indexed bidder)',
+
+  'function changeAuctionPhaseBidding()',
+  'function changeAuctionPhasePaused()',
+  'function changeAuctionPhaseReveal()',
+  'function changeAuctionPhaseClaim()',
 ]
 
 

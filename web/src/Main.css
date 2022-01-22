@@ -168,6 +168,28 @@ footer > * {
 }
 
 
+.blue, .red, .green {
+  display: inline-block;
+  height: 50px;
+  width: 50px;
+  margin: 10px;
+}
+/*hsl(55deg 25% 69%)*/
+.red {
+  background-color: hsl(5deg 75% 59%);
+}
+
+.green {
+  background-color: hsl(100deg 46% 32%);
+}
+
+.blue {
+  background-color: hsl(244deg 48% 41%);
+}
+
+.purple {
+  background-color: hsl(263deg 30% 38%);
+}
 
 
 

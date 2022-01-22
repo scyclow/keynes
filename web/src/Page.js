@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom'
 import {Helmet} from 'react-helmet'
 
 import { pollCompletion } from './utils'
-import { useEthContext, useBiddingPhase, useBids } from './hooks'
+import { useEthContext, useBiddingPhase, useBids, useHighestBidder, useTokenExists } from './hooks'
 import ls, { refreshBidState } from './localStorage'
 
 
@@ -18,6 +18,9 @@ import ls, { refreshBidState } from './localStorage'
 
 export default function Page() {
   const { id } = useParams()
+  const {contracts, connectedAddress } = useEthContext()
+  const tokenExists = useTokenExists(id)
+
 
 
   return (
@@ -37,8 +40,12 @@ export default function Page() {
         </div>
       </section>
 
-      {/* TODO check if token has already been minted. if so, don't display form */}
-      <BiddingForm id={id} />
+      {tokenExists
+        ? ''
+        : connectedAddress
+          ? <BiddingForm id={id} />
+          : <h2>Please Connect your wallet to bid</h2>
+      }
 
     </div>
   )
@@ -52,7 +59,9 @@ function BiddingForm({ id }) {
   const {contracts, signer, connectedAddress } = useEthContext()
 
   const [bidAmount, setBidAmount] = useState('')
-  const { bids, isLoading, submitBid } = useBids()
+  const { bids, isLoading, submitBid, withdrawBid, revealBid } = useBids()
+  const biddingPhase = useBiddingPhase()
+  const highestBidder = useHighestBidder(id)
 
   return (
     <section>
@@ -64,30 +73,41 @@ function BiddingForm({ id }) {
           Place Bid
         </button>
       </div>
+      {biddingPhase == 2
+        ? `Highest Active Bid: ${highestBidder.amount}`
+        : ''
+      }
+
+      {biddingPhase == 3
+        ? `Winning Bid: ${highestBidder.amount}`
+        : ''
+      }
       <a href="/">Learn more about the bidding process</a>
       {isLoading ? 'bid pending...' : ''}
       {Object.values(bids)
         .filter(bid => bid.tokenId === id)
-        .map((bid, i) => <BidRow bid={bid} key={i} />)
+        .map((bid, i) =>
+          <BidRow
+            bid={bid}
+            withdrawBid={() => withdrawBid(bid.hashedBid)}
+            revealBid={() => revealBid(bid.hashedBid, bid.tokenId, bid.bid)}
+            key={i}
+          />)
       }
     </section>
   )
 }
 
-function BidRow({ bid }) {
+function BidRow({ bid, withdrawBid, revealBid }) {
   const {contracts, signer, connectedAddress } = useEthContext()
   const biddingPhase = useBiddingPhase()
-
-  const onWithdraw = async () => {
-
-  }
 
   return (
     <div>
       {bid.bid}
       {bid.state}
-      {biddingPhase === 1 ? <button>Widthdraw Bid</button> : false}
-      {biddingPhase === 2 ? <button>Reveal Bid</button> : false}
+      {biddingPhase === 1 && bid.state === 'sealed' ? <button onClick={withdrawBid}>Widthdraw Bid</button> : false}
+      {biddingPhase === 2 && bid.state === 'sealed' ? <button onClick={revealBid}>Reveal Bid</button> : false}
 
     </div>
   )
