@@ -49,8 +49,9 @@ export async function refreshBidState(contracts, bidder) {
   const withdrawLogs = await contracts.BlindAuction.filters.WithdrawBid(null, bidder)
   const withdrawBids = await contracts.BlindAuction.queryFilter(withdrawLogs)
 
-  const revealLogs = await contracts.BlindAuction.filters.RevealBid(null, null, bidder)
+  const revealLogs = await contracts.BlindAuction.filters.RevealBid(null, null, null, bidder)
   const revealBids = await contracts.BlindAuction.queryFilter(revealLogs)
+
 
 
   createBids.forEach(bid => updateBidState(bidder, bid.args.hash, 'sealed'))

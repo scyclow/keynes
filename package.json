@@ -9,7 +9,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "deploy:local": "hardhat run --network localhost scripts/deployLocal.js",
-    "deploy:rinkeby": "npx hardhat run scripts/deploy.js --network rinkeby",
+    "deploy:rinkeby": "npx hardhat run scripts/deployRinkeby.js --network rinkeby",
     "network": "npx hardhat node",
     "hardhat": "hardhat"
   },

@@ -1033,6 +1033,40 @@ describe('BlindAuction', () => {
     })
   })
 
+  describe.only('batchClaim', () => {
+    it('should claim all the provided tokens', async () => {
+      const ids = []
+      for (let i=0; i<100; i++) {
+        ids.push(i)
+        const bidHash = await BlindAuction.connect(bidder1).hashBid(i, lowBidValue, bidder1.address)
+        await BlindAuction.connect(bidder1).placeSealedBid(bidHash, payableEth)
+      }
+
+      await BlindAuction.connect(owner).changeAuctionPhaseReveal()
+      for (let i=0; i<100; i++) {
+        await BlindAuction.connect(bidder1).unsealBid(i, lowBidValue)
+      }
+
+      await expectFailure(() =>
+        BlindAuction.connect(owner).batchClaim(ids),
+        'Tokens can only be claimed in the CLAIM phase'
+      )
+
+      await BlindAuction.connect(owner).changeAuctionPhaseClaim()
+
+      await expectFailure(() =>
+        BlindAuction.connect(bidder2).batchClaim(ids),
+        'Ownable:'
+      )
+
+      await BlindAuction.connect(owner).batchClaim(ids)
+
+      for (let i=0; i<100; i++) {
+        expect(await KBC.connect(bidder1).ownerOf(i)).to.equal(bidder1.address)
+      }
+    })
+  })
+
   describe('withdrawFunds', () => {
     it('should withdraw eth', async () => {
       const bidHash1 = await BlindAuction.connect(bidder1).hashBid(0, lowBidValue, bidder1.address)

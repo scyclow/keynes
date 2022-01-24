@@ -149,6 +149,15 @@ contract BlindAuction {
     kbcContract.mint(unsealedBid.bidder, tokenId);
   }
 
+  function batchClaim(uint256[] calldata tokenIds) external onlyOwner {
+    require(auctionPhase == AuctionPhase.CLAIM, "Tokens can only be claimed in the CLAIM phase");
+    for (uint i = 0; i < tokenIds.length; i++) {
+      uint256 tokenId = tokenIds[i];
+      UnsealedBid storage unsealedBid = tokenIdToHighestUnsealedBid[tokenIds[i]];
+      kbcContract.mint(unsealedBid.bidder, tokenIds[i]);
+    }
+  }
+
   function withdrawFunds() external onlyOwner {
     require(auctionPhase == AuctionPhase.CLAIM, "Funds can only be withdrawn in the CLAIM phase");
     payable(msg.sender).transfer(address(this).balance);

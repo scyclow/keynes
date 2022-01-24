@@ -19,7 +19,7 @@ import ls, { refreshBidState } from './localStorage'
 export default function Page() {
   const { id } = useParams()
   const {contracts, connectedAddress } = useEthContext()
-  const tokenExists = useTokenExists(id)
+  const { exists: tokenExists, owner: tokenOwner } = useTokenExists(id)
 
 
 
@@ -41,7 +41,7 @@ export default function Page() {
       </section>
 
       {tokenExists
-        ? ''
+        ? `Portrait Owner: ${tokenOwner}`
         : connectedAddress
           ? <BiddingForm id={id} />
           : <h2>Please Connect your wallet to bid</h2>
@@ -59,7 +59,7 @@ function BiddingForm({ id }) {
   const {contracts, signer, connectedAddress } = useEthContext()
 
   const [bidAmount, setBidAmount] = useState('')
-  const { bids, isLoading, submitBid, withdrawBid, revealBid } = useBids()
+  const { bids, isLoading, submitBid, withdrawBid, revealBid, claimToken } = useBids()
   const biddingPhase = useBiddingPhase()
   const highestBidder = useHighestBidder(id)
 
@@ -67,14 +67,11 @@ function BiddingForm({ id }) {
     <section>
       <h2>Place Blind Bid</h2>
       <p>This will require a 0.2 ETH stake</p>
-      <div>
-        <input value={bidAmount} placeholder="0.2 E" onChange={e => setBidAmount(e.target.value)} type="number" />
-        <button onClick={() => submitBid(id, bidAmount)}>
-          Place Bid
-        </button>
-      </div>
+
+
+
       {biddingPhase == 2
-        ? `Highest Active Bid: ${highestBidder.amount}`
+        ? `Highest Active Bid: ${highestBidder.amount}` + (highestBidder.bidder === connectedAddress ? ' (Placed by you)' : '')
         : ''
       }
 
@@ -82,17 +79,38 @@ function BiddingForm({ id }) {
         ? `Winning Bid: ${highestBidder.amount}`
         : ''
       }
-      <a href="/">Learn more about the bidding process</a>
-      {isLoading ? 'bid pending...' : ''}
-      {Object.values(bids)
-        .filter(bid => bid.tokenId === id)
-        .map((bid, i) =>
-          <BidRow
-            bid={bid}
-            withdrawBid={() => withdrawBid(bid.hashedBid)}
-            revealBid={() => revealBid(bid.hashedBid, bid.tokenId, bid.bid)}
-            key={i}
-          />)
+
+      {biddingPhase == 3 && highestBidder.bidder === connectedAddress
+        ? <button onClick={() => claimToken(id)}>Claim Token</button>
+        : ''
+      }
+
+      {biddingPhase === 1
+        ? <div>
+            <input value={bidAmount} placeholder="0.2 E" onChange={e => setBidAmount(e.target.value)} type="number" />
+            <button onClick={() => submitBid(id, bidAmount)}>
+              Place Bid
+            </button>
+          </div>
+        : ''
+      }
+
+      {biddingPhase === 1 || biddingPhase === 2
+        ? <>
+            <a href="/">Learn more about the bidding process</a>
+            {isLoading ? 'bid pending...' : ''}
+            {Object.values(bids)
+              .filter(bid => bid.tokenId === id)
+              .map((bid, i) =>
+                <BidRow
+                  bid={bid}
+                  withdrawBid={() => withdrawBid(bid.hashedBid)}
+                  revealBid={() => revealBid(bid.hashedBid, bid.tokenId, bid.bid)}
+                  key={i}
+                />)
+            }
+          </>
+        : ''
       }
     </section>
   )

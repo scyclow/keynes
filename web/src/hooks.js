@@ -123,7 +123,15 @@ export function useBids() {
     setIsLoading(false)
   }
 
-  // const claim
+  const claimToken = async (tokenId) => {
+    setIsLoading(true)
+    await contracts.BlindAuction.connect(signer).claimToken(tokenId)
+    await pollCompletion(
+      () => contracts.KBC.exists(tokenId),
+      1000
+    )
+    setIsLoading(false)
+  }
 
   return {
     bids: outstandingBids,
@@ -131,22 +139,28 @@ export function useBids() {
     submitBid,
     withdrawBid,
     revealBid,
+    claimToken
   }
 }
 
 export function useTokenExists(tokenId) {
-  const [isLoading, setIsLoading] = useState(false)
   const { contracts } = useEthContext()
+  const [isLoading, setIsLoading] = useState(false)
   const [exists, setExists] = useState(false)
+  const [owner, setOwner] = useState(false)
 
   useEffect(async () => {
     if (contracts) {
       const exists = await contracts.KBC.exists(tokenId)
       setExists(exists)
+      if (exists) {
+        const owner = await contracts.KBC.ownerOf(tokenId)
+        setOwner(owner)
+      }
     }
   }, [contracts])
 
-  return exists
+  return { exists, owner }
 }
 
 export function useHighestBidder(tokenId) {

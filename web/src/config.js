@@ -25,7 +25,7 @@ export const providerOptions = {
   }
 };
 
-export const CHAIN = 'localhost'
+export const CHAIN = 'rinkeby'
 
 export const contractAddrs = {
   mainnet: {},
@@ -34,6 +34,11 @@ export const contractAddrs = {
     TokenURI: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
     BlindAuction: '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9'
   },
+  rinkeby: {
+    KBC: '0x97008EDA4194d7be002D1b22CDd249CcB1169FEa',
+    BlindAuction: '0x3C872e8358A353714b42657B4e90c72d0d873dAF',
+    TokenURI: '0x1d9925464f2067d84D232Fc7440f957dA0a9412B'
+  }
 }
 
 export function getActiveContractAddresses() {
@@ -60,7 +65,7 @@ export const BlindAuctionABI = [
 
   'event CreateBid(bytes32 indexed hash, uint stake, address indexed bidder)',
   'event WithdrawBid(bytes32 indexed hash, address indexed bidder)',
-  'event RevealBid(uint indexed tokenId, uint amount, address indexed bidder)',
+  'event RevealBid(bytes32 indexed hash, uint256 indexed tokenId, uint256 amount, address indexed bidder)',
 
   'function changeAuctionPhaseBidding()',
   'function changeAuctionPhasePaused()',

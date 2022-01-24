@@ -1,0 +1,12 @@
+.Hero {
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top:  0;
+  z-index: -1;
+}
+/*
+#defaultCanvas0 {
+  width: 100vw !important;
+  height: 100vh !important;
+}*/

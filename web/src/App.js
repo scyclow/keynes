@@ -32,25 +32,7 @@ const basename = window.location.href.includes('steviep.xyz/keynes')
   : '/'
 
 
-function Header() {
-  const {
-    provider,
-    signer,
-    connectedAddress,
-    connected,
-    onConnect,
-    onDisconnect
-  } = useEthContext()
 
-  return (
-    <header>
-      <button onClick={onConnect}>Connect</button>
-      <button onClick={onDisconnect}>Disconnect</button>
-      {connectedAddress}
-    </header>
-  )
-
-}
 
 function App() {
 
@@ -58,7 +40,6 @@ function App() {
   return (
     <>
       <BrowserRouter basename={basename}>
-        <Header />
         <ScrollToTop />
         <Routes>
           <Route
